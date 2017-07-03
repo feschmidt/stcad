@@ -27,14 +27,11 @@ def make_rounded_edges(rectangle, radius, dict_corners):
 			number of corners')
 
 
-
-	# corner_coord = np.flipud(rectangle.points)
 	corner_coord = rectangle.points
 	
 	rectangle_shapely = poly_to_shapely(rectangle)
 	rounded_rect = rectangle_shapely
 	for key, value in dict_corners.iteritems():
-	
 		if key[:2] == 'BL':
 			rot = 0
 		elif key[:2] == 'BR':
@@ -187,53 +184,53 @@ def correct_for_multipol(pol):
 # layout.show()
 
 # # print co.bounding_box
-
-height = 0
-top_width = 5
-fork_height = height+ 20
-fork_depth = 2
-base_width = 20
-top_width = 10
-
-
-# box=shapes.Rectangle((-l,-l), (l,l), layer=2)
-# trapezoid = core.Boundary( [(-0.5*base_width,0),
-# 										(0.5*base_width,0),
-# 										(0.5*top_width,height),
-# 										(-0.5*top_width,height),
-# 										(-0.5*base_width,0)])
-fork = cad.core.Boundary([(-0.5*top_width,height),
-							(0.5*top_width,height),
-							(0.5*top_width,fork_height),
-							(0.5*top_width - top_width/3.,fork_height),
-							(0.5*top_width - top_width/3.,fork_height-fork_depth),
-							(0.5*top_width - 2*top_width/3.,fork_height-fork_depth),
-							(0.5*top_width - 2*top_width/3.,fork_height),
-							(-0.5*top_width ,fork_height),
-							(-0.5*top_width,0)])
+# ----------------------------------------------------------------------
+# height = 0
+# top_width = 5
+# fork_height = height+ 20
+# fork_depth = 2
+# base_width = 20
+# top_width = 10
 
 
-corners = collections.OrderedDict()
-corners['BLO'] = 0
-corners['BR1'] = 1
-corners['TR2'] = 2
-corners['TL3'] = 3
-corners['BR4O'] = 4
-corners['BL5O'] = 5
-corners['TR6'] = 6
-corners['TL7'] = 7
+# # box=shapes.Rectangle((-l,-l), (l,l), layer=2)
+# # trapezoid = core.Boundary( [(-0.5*base_width,0),
+# # 										(0.5*base_width,0),
+# # 										(0.5*top_width,height),
+# # 										(-0.5*top_width,height),
+# # 										(-0.5*base_width,0)])
+# fork = cad.core.Boundary([(-0.5*top_width,height),
+# 							(0.5*top_width,height),
+# 							(0.5*top_width,fork_height),
+# 							(0.5*top_width - top_width/3.,fork_height),
+# 							(0.5*top_width - top_width/3.,fork_height-fork_depth),
+# 							(0.5*top_width - 2*top_width/3.,fork_height-fork_depth),
+# 							(0.5*top_width - 2*top_width/3.,fork_height),
+# 							(-0.5*top_width ,fork_height),
+# 							(-0.5*top_width,0)])
 
-print corners
-# #
-out = make_rounded_edges(fork, radius=0.3,dict_corners=corners)#,'TL'])
-out.points[0] = [-10,0]
-out.points[-1] = [-10,0]
-print out.points
-cell=cad.core.Cell('Tna')
 
-cell.add(out)
-# cell.add(mask_gdscad)
-layout = cad.core.Layout('LIBRARY')
-layout.add(cell)
-layout.show()
+# corners = collections.OrderedDict()
+# corners['BLO'] = 0
+# corners['BR1'] = 1
+# corners['TR2'] = 2
+# corners['TL3'] = 3
+# corners['BR4O'] = 4
+# corners['BL5O'] = 5
+# corners['TR6'] = 6
+# corners['TL7'] = 7
+
+# print corners
+# # #
+# out = make_rounded_edges(fork, radius=0.3,dict_corners=corners)#,'TL'])
+# out.points[0] = [-10,0]
+# out.points[-1] = [-10,0]
+# print out.points
+# cell=cad.core.Cell('Tna')
+
+# cell.add(out)
+# # cell.add(mask_gdscad)
+# layout = cad.core.Layout('LIBRARY')
+# layout.add(cell)
+# layout.show()
 

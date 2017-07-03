@@ -26,8 +26,6 @@ class Base_Chip():
 
 		self.cell = cad.core.Cell(name)
 
-	def add_base_point(self,name,point):
-		self.base_point[name] = point
 
 
 
