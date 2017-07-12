@@ -5,8 +5,9 @@ import gdsCAD as cad
 
 class JJunctions():
 
-	def __init__(self,  dict_junctions):
+	def __init__(self, name, dict_junctions):
 		
+		self.name = name
 		self.dict_junctions = dict_junctions
 
 		
@@ -30,12 +31,12 @@ class JJunctions():
 			raise ValueError('overlap cannot be <0')
 
 
-
+		# added an extra 0.15 for width of junction lower lead
 		junct_lead_lower_points = [(-0.5*bjunction_width,0),
 								(0.5*bjunction_width,0),
 								(0.5*bjunction_width,bjunction_height),
-								(0.5*(junction_width+0.1),bjunction_height+junction_height),
-								(-0.5*(junction_width+0.1),bjunction_height+junction_height),
+								(0.5*(junction_width+0.15),bjunction_height+junction_height),
+								(-0.5*(junction_width+0.15),bjunction_height+junction_height),
 								(-0.5*bjunction_width,bjunction_height),
 								(-0.5*bjunction_width,0)]
 
@@ -63,7 +64,7 @@ class JJunctions():
 
 		junc_list = cad.core.Elements([junct_lower,junct_upper])
 
-		cell_junct = cad.core.Cell('JUNCTIONS')
+		cell_junct = cad.core.Cell(self.name.upper())
 
 		cell_junct.add(junc_list)
 

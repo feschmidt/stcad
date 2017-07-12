@@ -1,31 +1,30 @@
 import gdsCAD as cad
-from chip import Base_Chip
 from junctions import JJunctions
 import utilities
 import collections
 
 
-class transmon(Base_Chip):
+class Transmon():
 
 	def __init__(self, name, dict_pads, dict_junctions, **kw):
+		self.name = name
 		self.dict_pads = dict_pads
 		self.dict_squidloop = kw.pop('dict_squidloop', None)
 		self.dict_junctions = dict_junctions
 
-		Base_Chip.__init__(self,name=name)
 
 
 
-
-
-class singlejuction_transmon(transmon):
+class Singlejuction_transmon(Transmon):
 	"""
 	This class returns a single junction Yale Transmon
 	"""
 
 	def __init__(self, name, dict_pads, dict_junctions, short = False):
 
-		transmon.__init__(self,name, dict_pads, dict_junctions)
+		Transmon.__init__(self,name, dict_pads, dict_junctions)
+
+		self.short = short
 
 		overl_junc_lead = 2
 		
@@ -42,22 +41,23 @@ class singlejuction_transmon(transmon):
 
 		
 
-		if short:
+		
+
+	def gen_pattern(self):
+		
+		self.cell = cad.core.Cell(self.name)
+
+		if self.short:
 			self.dict_pads['fork_depth'] = 0
 			self.pad_spacing = 2*(self.dict_pads['height'] + self.dict_pads['lead_height'] )
 			
-		
+			self.dict_pads['rounded_edges'] = False
+
 		else:
 			self.draw_junctions()
 
 		self.draw_pads()
-
 		
-		layout = cad.core.Layout('LIBRARY')
-		layout.add(self.cell)
-		layout.save('output.gds')
-		layout.show()
-
 	def draw_pads(self):
 
 		width = self.dict_pads.get('width', 250)
@@ -121,31 +121,33 @@ class singlejuction_transmon(transmon):
 
 	def draw_junctions(self):
 
-		junctions = JJunctions(self.dict_junctions)
+		junctions = JJunctions('junctions',self.dict_junctions)
 		
 		self.cell.add(junctions.draw_junctions(),origin=(0,self.position_offs_junc))
 
 
-		
+	def save_to_gds(self, show = True):
 
-			
+		layout = cad.core.Layout('CHIP')
+		layout.add(self.cell)
+		layout.save(self.name + '.gds')
+
+		if show:
+			layout.show()
 
 
 
 
-
-
-
-
-class squidjunction_transmon(transmon):
+class Squidjunction_transmon(Transmon):
 	"""
 	This class returns a squid junction Yale Transmon
 	"""
 
 	def __init__(self, name, dict_pads, dict_squidloop, dict_junctions):
 
-		transmon.__init__(self,name, dict_pads, dict_junctions)
+		Transmon.__init__(self,name, dict_pads, dict_junctions)
 
+		self.name = name
 		self.dict_pads = dict_pads
 		self.dict_squidloop = dict_squidloop
 		self.dict_junctions = dict_junctions
@@ -169,10 +171,7 @@ class squidjunction_transmon(transmon):
 
 		self.draw_junctions()
 		
-		layout = cad.core.Layout('LIBRARY')
-		layout.add(self.cell)
-		layout.save('output.gds')
-		layout.show()
+
 
 	def draw_pads(self):
 
@@ -272,7 +271,17 @@ class squidjunction_transmon(transmon):
 
 	def draw_junctions(self):
 
-		junctions = JJunctions(self.dict_junctions)
 
+		junctions = JJunctions('junctions_L',self.dict_junctions)
 		self.cell.add(junctions.draw_junctions(),origin=(self.position_offs_junc_x,self.position_offs_junc_y))
+		junctions.name = 'junctions_R'
 		self.cell.add(junctions.draw_junctions(),origin=(-self.position_offs_junc_x,self.position_offs_junc_y))
+
+	def save_to_gds(self, show = True):
+
+		layout = cad.core.Layout('CHIP')
+		layout.add(self.cell)
+		layout.save(self.name + '.gds')
+
+		if show:
+			layout.show()
