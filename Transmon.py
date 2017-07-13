@@ -26,10 +26,10 @@ class Singlejuction_transmon(Transmon):
 
 		self.short = short
 
-		overl_junc_lead = 2
+		self.overl_junc_lead  = self.dict_junctions['overl_junc_lead']
 		
 		self.position_offs_junc = self.dict_pads['height'] + self.dict_pads['lead_height'] +\
-								 - overl_junc_lead
+								 - self.overl_junc_lead
 						
 
 
@@ -152,11 +152,11 @@ class Squidjunction_transmon(Transmon):
 		self.dict_squidloop = dict_squidloop
 		self.dict_junctions = dict_junctions
 
-		overl_junc_lead = 2
+		self.overl_junc_lead  = self.dict_junctions['overl_junc_lead']
 		
 		self.position_offs_junc_y = self.dict_pads['height'] + self.dict_pads['lead_height'] +\
 								 self.dict_squidloop['squid_height'] + self.dict_squidloop['squid_thickness'] +\
-								 - overl_junc_lead
+								 - self.overl_junc_lead
 
 		self.position_offs_junc_x = 0.5*self.dict_squidloop['squid_width'] + 0.5*self.dict_squidloop['squid_thickness'] 
 		

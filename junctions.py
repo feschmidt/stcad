@@ -35,8 +35,8 @@ class JJunctions():
 		junct_lead_lower_points = [(-0.5*bjunction_width,0),
 								(0.5*bjunction_width,0),
 								(0.5*bjunction_width,bjunction_height),
-								(0.5*(junction_width+0.15),bjunction_height+junction_height),
-								(-0.5*(junction_width+0.15),bjunction_height+junction_height),
+								(0.5*(junction_width+0.1),bjunction_height+junction_height),
+								(-0.5*(junction_width+0.1),bjunction_height+junction_height),
 								(-0.5*bjunction_width,bjunction_height),
 								(-0.5*bjunction_width,0)]
 
