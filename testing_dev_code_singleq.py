@@ -1,5 +1,7 @@
 import numpy as np
-import transmon 
+from source_dev.chip import Base_Chip
+import source_dev.transmon as transmon
+
 
 dict_pads = {'width': 600,
 			'height': 250,
@@ -29,5 +31,9 @@ dict_junctions = {'bjunction_width':2,
 first_qubit = transmon.Singlejuction_transmon('test',dict_pads,
 											dict_junctions,short = False)
 first_qubit.gen_pattern()
-first_qubit.save_to_gds()
+
+chip = Base_Chip('test_single junction transmon_chip',9000,9000)
+chip.add_component(first_qubit.cell,(1200,200))
+chip.save_to_gds(False)
+
 

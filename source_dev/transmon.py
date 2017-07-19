@@ -5,18 +5,7 @@ import utilities
 import collections
 
 
-class Transmon():
-
-	def __init__(self, name, dict_pads, dict_junctions, **kw):
-		self.name = name
-		self.dict_pads = dict_pads
-		self.dict_squidloop = kw.pop('dict_squidloop', None)
-		self.dict_junctions = dict_junctions
-
-
-
-
-class Singlejuction_transmon(Transmon):
+class Singlejuction_transmon():
 	"""
 	This class returns a single junction Yale Transmon
 	"""
@@ -24,7 +13,9 @@ class Singlejuction_transmon(Transmon):
 	def __init__(self, name, dict_pads, dict_junctions, short = False, 
 				junctiontest = False):
 
-		Transmon.__init__(self,name, dict_pads, dict_junctions)
+		self.name = name
+		self.dict_pads = dict_pads
+		self.dict_junctions = dict_junctions
 
 		self.short = short
 		self.junctiontest = junctiontest
@@ -129,7 +120,7 @@ class Singlejuction_transmon(Transmon):
 	def add_vortex_holes(self):
 
 		holes = cad.core.Cell("HOLES")
-		layer_holes = 2
+		layer_holes = 22
 		height = self.dict_pads['height']
 		width = self.dict_pads['width']
 
@@ -172,26 +163,13 @@ class Singlejuction_transmon(Transmon):
 		self.cell.add(junctions.draw_junctions(),origin=(0,self.position_offs_junc))
 
 
-	def save_to_gds(self, show = True):
 
-		layout = cad.core.Layout('CHIP')
-		layout.add(self.cell)
-		layout.save(self.name + '.gds')
-
-		if show:
-			layout.show()
-
-
-
-
-class Squidjunction_transmon(Transmon):
+class Squidjunction_transmon():
 	"""
 	This class returns a squid junction Yale Transmon
 	"""
 
 	def __init__(self, name, dict_pads, dict_squidloop, dict_junctions):
-
-		Transmon.__init__(self,name, dict_pads, dict_junctions)
 
 		self.name = name
 		self.dict_pads = dict_pads
@@ -213,11 +191,17 @@ class Squidjunction_transmon(Transmon):
 
 
 
-		self.draw_pads()					
+	def gen_pattern(self):
+		
+		self.cell = cad.core.Cell(self.name)
+
+		self.draw_pads()
 
 		self.draw_junctions()
-		
 
+			
+			# self.add_vortex_holes()
+		
 
 	def draw_pads(self):
 
@@ -323,11 +307,3 @@ class Squidjunction_transmon(Transmon):
 		junctions.name = 'junctions_R'
 		self.cell.add(junctions.draw_junctions(),origin=(-self.position_offs_junc_x,self.position_offs_junc_y))
 
-	def save_to_gds(self, show = True):
-
-		layout = cad.core.Layout('CHIP')
-		layout.add(self.cell)
-		layout.save(self.name + '.gds')
-
-		if show:
-			layout.show()

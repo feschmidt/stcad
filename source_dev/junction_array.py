@@ -29,9 +29,8 @@ class Junctiontest():
 		self.block = block
 		self.block_spacing = block_spacing
 
-		self.layer_label = 3
-		self.layer_ref = 4
-		self.layer_box = 5
+		self.layer_ref = 14
+
 	def gen_junction_array(self):
 
 		test_junction = transmon.Singlejuction_transmon('test',self.dict_pads,
@@ -39,7 +38,7 @@ class Junctiontest():
 											junctiontest=True)
 		grid = cad.core.Cell('GRID')
 		ref_cell = cad.core.Cell('REF_CELL')
-		self.grid_chip = cad.core.Cell('GRID_CHIP')
+		self.cell = cad.core.Cell('GRID_CHIP')
 		# label_grid = cad.shapes.LineLabel(' Block'  ,30, (pos_endx/2.,pos_endy+50),layer=3)
 		for j in range(0,self.nrows):
 			
@@ -66,10 +65,10 @@ class Junctiontest():
 
 		new_cell = cad.core.CellArray(grid, self.block[0],
 									self.block[1] ,(max_x,max_y),(0,0))
-		self.grid_chip.add(new_cell)
+		self.cell.add(new_cell)
 	
-		pos_endx = self.grid_chip.bounding_box[1][0]
-		pos_endy = self.grid_chip.bounding_box[1][1]
+		pos_endx = self.cell.bounding_box[1][0]
+		pos_endy = self.cell.bounding_box[1][1]
 
 		# Making 10 standard calibration junctions
 		posx_cal_jj = pos_endx+self.block_spacing[0]
@@ -82,35 +81,6 @@ class Junctiontest():
 				test_junction.gen_pattern()
 
 				# We have 5 calibration junctions spaced 50 um apart
-				self.grid_chip.add(test_junction.cell,
+				self.cell.add(test_junction.cell,
 								origin= (posx_cal_jj+m*self.dx,posy_cal_jj+n*self.dy))
-
-
-
-		date = time.strftime("%d/%m/%Y")
-		#The label is added 100 um on top of the main cell
-		label_grid_chip = cad.shapes.LineLabel('JunctionTest..' + 'width='+ str(self.w_junc_start)+\
-										'.....'+ str(junc_width) +' um ' + \
-										 date,40, (pos_endx/3.,pos_endy+100),layer=self.layer_label)
-		
-
-		self.grid_chip.add(label_grid_chip)
-		
-		# Now adding a box around design
-		final_dim = self.grid_chip.bounding_box
-		box=cad.shapes.Box(final_dim[0] - 30,final_dim[1] + 30 , width=0.2, layer =self.layer_box)
-
-		self.grid_chip.add(box)
-
-	def save_to_gds(self, save = True, show = True):
-
-		layout = cad.core.Layout('CHIP')
-		layout.add(self.grid_chip)
-
-
-		if save:
-			layout.save(self.name + '.gds')
-
-		if show:
-			layout.show()
 

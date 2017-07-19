@@ -1,6 +1,9 @@
 import numpy as np
-import junction_array
-
+from source_dev.chip import Base_Chip
+import source_dev.junction_array as junction_array
+"""
+For junctiontest layer 14,20,21 reserved
+"""
 dict_pads = {'width': 60,
 			'height': 60,
 			'lead_width': 10,
@@ -33,9 +36,18 @@ dx = 70
 dy = 70
 blocks = [2,2]
 block_spacing = [1000,1000]
-testf = junction_array.Junctiontest('junctiontest', dict_pads,dict_junctions,
+name =  'JunctionTest..' + 'width='+ str(w_juncs_start)+\
+										'.....'+ str(njuncx*njuncy*dw_junc+\
+											dw_junc) +' um '
+
+testf = junction_array.Junctiontest('Junctiontest', dict_pads,dict_junctions,
 									njuncx,njuncy,w_juncs_start,
 									dw_junc, dx, dy,blocks, block_spacing)
 
+
 testf.gen_junction_array()
-testf.save_to_gds(save = True)
+
+chip = Base_Chip(name,9000,9000)
+chip.add_component(testf.cell,(2000,2000))
+chip.save_to_gds(show = True, save =False)
+
