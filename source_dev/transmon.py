@@ -1,3 +1,4 @@
+import numpy as np
 import gdsCAD as cad
 from junctions import JJunctions
 import utilities
@@ -20,11 +21,13 @@ class Singlejuction_transmon(Transmon):
 	This class returns a single junction Yale Transmon
 	"""
 
-	def __init__(self, name, dict_pads, dict_junctions, short = False):
+	def __init__(self, name, dict_pads, dict_junctions, short = False, 
+				junctiontest = False):
 
 		Transmon.__init__(self,name, dict_pads, dict_junctions)
 
 		self.short = short
+		self.junctiontest = junctiontest
 
 		self.overl_junc_lead  = self.dict_junctions['overl_junc_lead']
 		
@@ -57,6 +60,7 @@ class Singlejuction_transmon(Transmon):
 			self.draw_junctions()
 
 		self.draw_pads()
+		# self.add_vortex_holes()
 		
 	def draw_pads(self):
 
@@ -104,7 +108,11 @@ class Singlejuction_transmon(Transmon):
 			corners['BR10O'] = 10
 			corners['TL11'] = 11
 			
-			rad_corner = 0.3
+			# check if code is used for junction test
+			if self.junctiontest:
+				map(corners.pop, ['TL5','BR6O','BL7O','TR8'])
+
+			rad_corner = 0.2
 			lower_pad = utilities.make_rounded_edges(lower_pad,
 													rad_corner, 
 													corners)
@@ -117,6 +125,44 @@ class Singlejuction_transmon(Transmon):
 
 		self.cell.add(pads)
 
+
+	def add_vortex_holes(self):
+
+		holes = cad.core.Cell("HOLES")
+		layer_holes = 2
+		height = self.dict_pads['height']
+		width = self.dict_pads['width']
+
+		holes_dim = 20.
+		mesh_wire = 5
+		period = holes_dim + mesh_wire
+		nr_holes_x = int((width-5)/period)
+	
+		nr_holes_y = int((height-5)/period)
+
+		
+		dict_corners = {}
+		dict_corners['BL']=0
+		dict_corners['TL']=1
+		dict_corners['TR']=2
+		dict_corners['BR']=3
+		radius = 0.2
+
+
+		start_posx = -width/2. + mesh_wire
+		start_posy = mesh_wire
+		# make element of all the holes
+		for i in range(0,nr_holes_y):
+			for j in range(0,nr_holes_x):
+				posx = start_posx + j*period
+				posy= start_posy + i*period
+				hole = cad.shapes.Rectangle((posx,posy),
+											(posx + holes_dim, posy+holes_dim),layer = layer_holes)
+				hole_rounded = utilities.make_rounded_edges(hole, radius, dict_corners)
+				holes.add(hole_rounded)
+
+		# holes.show()
+		self.cell.add(holes)
 
 
 	def draw_junctions(self):

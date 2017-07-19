@@ -35,7 +35,8 @@ class Junctiontest():
 	def gen_junction_array(self):
 
 		test_junction = transmon.Singlejuction_transmon('test',self.dict_pads,
-											self.dict_junctions,short = False)
+											self.dict_junctions,short = False,
+											junctiontest=True)
 		grid = cad.core.Cell('GRID')
 		ref_cell = cad.core.Cell('REF_CELL')
 		self.grid_chip = cad.core.Cell('GRID_CHIP')
@@ -70,16 +71,19 @@ class Junctiontest():
 		pos_endx = self.grid_chip.bounding_box[1][0]
 		pos_endy = self.grid_chip.bounding_box[1][1]
 
-		# Making calibration junctions
+		# Making 10 standard calibration junctions
 		posx_cal_jj = pos_endx+self.block_spacing[0]
-		for n in range(0,5):
-			name = 'testcalibrationjj_' + str()
-			test_junction.name = name
-			test_junction.short = True
-			test_junction.gen_pattern()
+		posy_cal_jj = pos_endy/2.
+		for n in range(0,2):
+			for m in range(0,5):
+				name = 'testcalibrationjj_' + str()
+				test_junction.name = name
+				test_junction.short = True
+				test_junction.gen_pattern()
 
-			# We have 5 calibration junctions spaced 50 um apart
-			self.grid_chip.add(test_junction.cell,origin= (posx_cal_jj+n*self.dx,pos_endy/2.))
+				# We have 5 calibration junctions spaced 50 um apart
+				self.grid_chip.add(test_junction.cell,
+								origin= (posx_cal_jj+m*self.dx,posy_cal_jj+n*self.dy))
 
 
 

@@ -76,8 +76,6 @@ def mask_disk(radius):
 	quarter_disk = shapely_to_poly(cutoff)
 	quarter_disk.rotate(180)
 	quarter_disk.translate((radius, radius))
-	
-
 
 	return quarter_disk
 
@@ -94,7 +92,6 @@ def shapely_to_poly(shapely_Polygon):
 		polygon = cad.core.Boundary(reshaped_points)
 
 	return polygon
-
 
 def poly_to_shapely(polygon):
 	'''

@@ -1,11 +1,11 @@
 import numpy as np
 import transmon 
 
-dict_pads = {'width': 30,
-			'height': 30,
+dict_pads = {'width': 600,
+			'height': 250,
 			'lead_width': 3,
 			'lead_height':5,
-			'fork_depth': 0,
+			'fork_depth': 0.5,
 			'rounded_edges':True,
 			'layer':1}
 
@@ -22,6 +22,7 @@ dict_junctions = {'bjunction_width':2,
 				'junction_height':1,
 				'w_dolan_bridge':w_dolan_bridge,
 				'appr_overlap':appr_overlap,
+				'overl_junc_lead':1,
 				'layer':3}
 
 
