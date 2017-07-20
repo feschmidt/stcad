@@ -1,0 +1,15 @@
+Notes on gdsCAD files
+- DONE #### How do I adjust the size of alignment marks? The default ones are way too big, alignment on the order of 2um
+- DONE #### Hall bars
+- DONE #### Reduce number of layouts, and create basechip in such a way that it is the final chip layout
+- DONE #### on each chip two bondpads for testing
+- DONE #### write classes and functions
+- CURRENTLY: Move save_to_gds to parent class basechip. Here, I routinely get the following message: "TypeError: unhashable type: 'Layout'". Seems to be connected to inputting global variables???
+- self.??? or global ???
+- class squid
+- class hallbar
+- proper 3x3 grid on 25mm x 25mm chip
+- jjmin to jjmax
+- RF hangers
+- RF hangers with junctions
+- RF with DC bias
