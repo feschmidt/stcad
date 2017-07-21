@@ -1,2 +1,2 @@
 # stcad
-# Environment for SteeleLab gdscad python scripts
+Environment for SteeleLab gdscad python scripts
