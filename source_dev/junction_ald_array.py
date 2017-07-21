@@ -1,15 +1,12 @@
 import numpy as np
 import gdsCAD as cad
-import basechip
+import dc_24pin
 
 class Junctionchip():
 
-    def __init__(self, name, dict_pads, dict_junctions, chipsize, x0 = -100, y0 = -2200, 
+    def __init__(self, name, dict_pads, dict_junctions, x0 = -100, y0 = -2200, 
         tlength = 1600):
-
-        self.base = basechip.BaseChip(l=chipsize)
-        self.chip = self.base.base_chip()
-    
+ 
         self.name = name
         self.dict_pads = dict_pads
         self.dict_junctions = dict_junctions
@@ -40,7 +37,7 @@ class Junctionchip():
                         (- self.tlength, tripeak + 100 + jjwidth / 2)]
         centerline = cad.core.Path(centerpoints, jjwidth, layer = self.layer_bottom)
 
-        self.padgroup = [cad.core.Cell('bottom')] * 2
+        self.padgroup = [cad.core.Cell('padgroup')] * 2
         self.padgroup[0].add(centerline)
 
         for k,i in enumerate(range(-3, 4)):
@@ -67,23 +64,10 @@ class Junctionchip():
             if i!=0:
                 self.padgroup[ll-1].add(junction)
 
-        # Create full array by inputting bottom junction row into basechip method
-        # gen_full_array
-        self.layout = self.base.gen_full_array(padgroup = self.padgroup, marker = marker,
-                                            vernier = vernier, testpads = testpads)
+        # Create full array by inputting bottom junction row into dc_24pin method gen_full_array
+        
+        self.cell = dc_24pin.gen_full_array(padgroup = self.padgroup)
+        #, marker = marker, vernier = vernier, testpads = testpads)
 
-        # Save and show using base method save_to_gds
-        #self.base.save_to_gds(chip = self.chip, layout = self.layout, name = 'testjunctions',
-        #                    save = True, show = True)
 
-## I would like to move save_to_gds to basechip, but I routinely get a "TypeError: unhashable type: 'Layout'"
-    def save_to_gds(self, save = True, show = True):
-
-        self.chip.add(self.layout)
-
-        if save:
-            self.chip.save(self.name + '.gds')
-
-        if show:
-            self.chip.show()
 
