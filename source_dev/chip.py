@@ -73,14 +73,10 @@ class Base_Chip():
 
 
     def save_to_gds(self, save = True, show = True):
-
         layout = cad.core.Layout('MAIN_CHIP')
         layout.add(self.cell)
-
-
         if save:
             layout.save(self.name + '.gds')
-
         if show:
             layout.show()
 
@@ -98,4 +94,17 @@ class Base_Chip():
         self.cell.add(pads)
 
 
-
+    def add_photolitho_marker(self, pos=(3000,3000)):
+        marker = cad.core.Cell('PHOTO')
+        amarks0 = cad.templates.AlignmentMarks(('A','C'),(1,2))
+        amarks = cad.core.CellReference(amarks0).translate(pos)
+        marker.add(amarks)
+        self.cell.add(amarks)
+    
+    
+    def add_photolitho_vernier(self, pos=(2500,2500)):
+        verniers = cad.core.Cell('VERNIER')
+        vmarks0 = cad.templates.Verniers(('A','B'),(1,2))
+        vmarks = cad.core.CellReference(vmarks0).translate(pos)
+        verniers.add(vmarks)
+        self.cell.add(verniers)
