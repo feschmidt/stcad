@@ -33,7 +33,7 @@ class Junctiontest():
 
 	def gen_junction_array(self):
 
-		test_junction = transmon.Singlejuction_transmon('test',self.dict_pads,
+		test_junction = transmon.Singlejunction_transmon('test',self.dict_pads,
 											self.dict_junctions,short = False,
 											junctiontest=True)
 		grid = cad.core.Cell('GRID')
