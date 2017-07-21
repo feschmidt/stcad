@@ -4,7 +4,7 @@ import dc_24pin
 
 class Junctionchip():
 
-    def __init__(self, name, dict_pads, dict_junctions, chipsize, x0 = -100, y0 = -2200, 
+    def __init__(self, name, dict_pads, dict_junctions, x0 = -100, y0 = -2200, 
         tlength = 1600):
  
         self.name = name
@@ -68,7 +68,6 @@ class Junctionchip():
         
         self.cell = dc_24pin.gen_full_array(padgroup = self.padgroup)
         #, marker = marker, vernier = vernier, testpads = testpads)
-
 
 
 
