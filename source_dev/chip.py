@@ -17,6 +17,7 @@ class Base_Chip():
         self.layer_label = 20
         self.layer_box = 21
         self.layer_ebpgmarker = 22
+        self.layer_testpads = 23
 
         self.cell = cad.core.Cell(name)
 
@@ -84,6 +85,17 @@ class Base_Chip():
             layout.show()
 
 
+    def add_bond_testpads(self, pos=(1000,1000), dim=(300,300), num=4):
+        '''
+        value(num) bonding pads with dimension dim (tuple) at position pos (tuple)
+        '''
+        pads = cad.core.Cell('TESTPADS')
+        x = [pos[0], self.xdim-pos[0], self.xdim-pos[0], pos[0]]
+        y = [pos[1], pos[1], self.ydim-pos[1], self.ydim-pos[1]]
+        for i in range(num):
+            box = cad.shapes.Rectangle((x[i]-dim[0]/2,y[i]-dim[1]/2),(x[i]+dim[0]/2,y[i]+dim[1]/2), layer = self.layer_testpads)
+            pads.add(box)
+        self.cell.add(pads)
 
 
 
