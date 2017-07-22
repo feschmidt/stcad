@@ -108,9 +108,12 @@ class Base_Chip():
         vmarks = cad.core.CellReference(vmarks0).translate(pos)
         verniers.add(vmarks)
         self.cell.add(verniers)
-        
+    
+    '''
+    # Disabled for now since issue with dxfImport    
     def add_TUlogo(self, pos=(3000,100)):
         # logo is added 100um below bottom edge of chip
         logo = cad.core.DxfImport('examples/TU_Delft_logo_Black.dxf',scale=1.0)
         logo.layer=self.layer_label
         self.cell.add(logo)
+    '''
