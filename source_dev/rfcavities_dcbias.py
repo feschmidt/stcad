@@ -28,21 +28,26 @@ class ShuntCavity():
         holemarker = self.dict_cavity['holemarker']
 
         center = 8500
-        launcherpoints = [(700, 8745+centerwidth/2),
-                        (1900, 8745+centerwidth/2),
-                        (3100, center+centerwidth/2),
-                        (3100, center-centerwidth/2),
-                        (1900, 8255-centerwidth/2),
-                        (700, 8255-centerwidth/2)]
+        launcherwidth = 490
+        llstart = 3100      # x coordinate of launcher lead start
+        llend = 3400      # x coordinate of launcher lead end
+        launcherpoints = [(700, center+(launcherwidth+centerwidth)/2),
+                        (1900, center+(launcherwidth+centerwidth)/2),
+                        (llstart, center+centerwidth/2),
+                        (llstart, center-centerwidth/2),
+                        (1900, center-(launcherwidth+centerwidth)/2),
+                        (700, center-(launcherwidth+centerwidth)/2)]
         launcher = cad.core.Boundary(launcherpoints)
 
-        launcherleadpoints = [(3100, center),(3406.2,center)]
+        launcherleadpoints = [(llstart, center),(llend,center)]
         launcherlead = cad.core.Path(launcherleadpoints,centerwidth)
 
-        shunt1_x1 = 3406.2
-        shunt1_y1 = 8290
-        shunt1_x2 = shunt1_x1 + 155
-        shunt1_y2 = shunt1_y1 + 420
+        shunt1_x1 = llend
+        shuntheight = 420
+        shuntlength = 155
+        shunt1_y1 = center-shuntheight/2
+        shunt1_x2 = shunt1_x1 + shuntlength
+        shunt1_y2 = shunt1_y1 + shuntheight
         shunt1_points = [(shunt1_x1, shunt1_y1),(shunt1_x2, shunt1_y2)]
 
         top_dx = 32.5
@@ -95,41 +100,32 @@ class ShuntCavity():
             final_angle=90)
         final_lead = cad.core.Path([(endx0,center),(endx,center)],centerwidth)
 
+        
         # Create cavity
-        cavity1 = cad.core.Cell('RF CAVITY')
+        cavity1 = [cad.core.Elements()] * 3
         # Add all elements with layer 1
         for toadd in [launcher, launcherlead, shunt1, shunt1_lead1, curve1,
                     curve1_lead, curve2, curve2_lead, curve3, curve3_lead,
                     curve4, curve4_lead, curve5, final_lead]:
-            toadd.layer = 1
-            cavity1.add(toadd)
+            toadd.layer = self.layer_bottom
+            cavity1[0].add(toadd)
 
         # Add all elements with layer 2
         for toadd in [shunt1_diel]:
-            toadd.layer = 2
-            cavity1.add(toadd)
+            toadd.layer = self.layer_diel
+            cavity1[1].add(toadd)
 
         # Add all elements with layer 3
         for toadd in [shunt1_top]:
-            toadd.layer = 3
-            cavity1.add(toadd)
-
+            toadd.layer = self.layer_top
+            cavity1[2].add(toadd)
         
-        # Create second cavity
-        # Doesn't work: RuntimeError: maximum recursion depth exceeded while calling a Python object
-        cavity2 = cad.core.CellReference(cavity1, origin = (10000,10000), rotation = 180, x_reflection=False)
-        #cavity2 = cad.core.CellReference(cavity1,rotation=90)
-        self.cell.add(cavity1)
-        self.cell.add(cavity2)
+        # Create second cavity as mirrored versio of first one
+        cavity2 = [cad.utils.reflect(cavity1[i],'x',origin=(5000,5000)) for i in range(3)]
         
-        '''
-        # Create second cavity
-        # Doesn't work: ValueError: operands could not be broadcast together with shapes (16) (2)
-        cavity1 = self.cell
-        cavity2 = cad.utils.reflect(cavity1, 'x', origin=(5000,5000))
-        self.cell.add(cavity2)
-        '''
-
+        self.cell.add(cavity1[0])
+        self.cell.add(cavity2[0])
+        
 
 
 
