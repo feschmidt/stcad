@@ -112,10 +112,13 @@ class ShuntCavity():
             toadd.layer = 3
             self.cell.add(toadd)
 
+        '''
+        # Create second cavity
+        # Doesn't work: RuntimeError: maximum recursion depth exceeded while calling a Python object
         cavity1 = self.cell
         cavity2 = cad.core.CellReference(cavity1,x_reflection=False)
         self.cell.add(cavity2)
-
+        '''
         '''
         # Create second cavity
         # Doesn't work: ValueError: operands could not be broadcast together with shapes (16) (2)
