@@ -4,10 +4,11 @@ import source_dev.junction_ald_array as junction_array
 import source_dev.squid_ald_array as squid_array
 import source_dev.rfcavities_dcbias as cavities
 
-dict_cavity = {'length': 6000,
+dict_cavity = {'length': 6900,
             'centerwidth': 10,
             'gapwidth': 6.2,
             'shunts': 2,
+            'startx0': 4400,
             'holedim': (80,100),
             'holemarker': True}
 
