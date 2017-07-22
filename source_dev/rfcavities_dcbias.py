@@ -95,30 +95,33 @@ class ShuntCavity():
             final_angle=90)
         final_lead = cad.core.Path([(endx0,center),(endx,center)],centerwidth)
 
+        # Create cavity
+        cavity1 = cad.core.Cell('RF CAVITY')
         # Add all elements with layer 1
         for toadd in [launcher, launcherlead, shunt1, shunt1_lead1, curve1,
                     curve1_lead, curve2, curve2_lead, curve3, curve3_lead,
                     curve4, curve4_lead, curve5, final_lead]:
             toadd.layer = 1
-            self.cell.add(toadd)
+            cavity1.add(toadd)
 
         # Add all elements with layer 2
         for toadd in [shunt1_diel]:
             toadd.layer = 2
-            self.cell.add(toadd)
+            cavity1.add(toadd)
 
         # Add all elements with layer 3
         for toadd in [shunt1_top]:
             toadd.layer = 3
-            self.cell.add(toadd)
+            cavity1.add(toadd)
 
-        '''
+        
         # Create second cavity
         # Doesn't work: RuntimeError: maximum recursion depth exceeded while calling a Python object
-        cavity1 = self.cell
-        cavity2 = cad.core.CellReference(cavity1,x_reflection=False)
+        cavity2 = cad.core.CellReference(cavity1, origin = (10000,10000), rotation = 180, x_reflection=False)
+        #cavity2 = cad.core.CellReference(cavity1,rotation=90)
+        self.cell.add(cavity1)
         self.cell.add(cavity2)
-        '''
+        
         '''
         # Create second cavity
         # Doesn't work: ValueError: operands could not be broadcast together with shapes (16) (2)
