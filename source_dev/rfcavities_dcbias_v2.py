@@ -99,7 +99,6 @@ class ShuntCavity():
         A = (stopx0-startx0) + 2*np.pi*r0 * 2 + (top_cv-bot_cv) * 4
         endx0 = stopx0+r0*8
         endx = length - (A - endx0) - gapwidth
-        print endx
 
         curve1 = cad.shapes.Disk((stopx0,top_cv),radius,inner_radius=inner_radius,initial_angle=90,
             final_angle=0)
@@ -117,7 +116,6 @@ class ShuntCavity():
             final_angle=90)
         final_lead = cad.core.Path([(endx0,center),(endx,center)],centerwidth)
 
-#        endhole = 0
         
         holex0 = endx
         holedim = self.holedim
@@ -143,17 +141,15 @@ class ShuntCavity():
             leadout = 125
             shunt2 = self.gen_shunt((endhole,70),leadout,gap=gapwidth)
             self.endshunt = shunt2[5]
-            print self.endshunt
         else:
             self.endshunt = endhole
+        
         # Create second launcher
         launcher2 = cad.utils.reflect(launcher,'y',origin=(5000,5000))
         holex0 = endx
         holedim = self.holedim
-        #if gapwidth != 0:
-        launcher2 = cad.utils.translate(launcher2,(self.endshunt-(10000-llstart),0))
-        #else:
-        #    launcher2 = cad.utils.translate(launcher2,(self.endshunt,0))
+        launcher2 = cad.utils.translate(launcher2,(self.endshunt-(10000-llstart),0))   
+        # For future: fix second shunt. For length adjustments make meandering longer or shorter, and center it. For now this is sufficient.
         
         # Create cavity
         cavity1 = [cad.core.Elements()] * 3
