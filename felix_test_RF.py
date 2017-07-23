@@ -17,6 +17,7 @@ dict_cavity = {'length': 6900,
 name = 'testcavities'
 testf = cavities.ShuntCavity(name,dict_cavity)
 testf.gen_cavities()
+testf.gen_full()
 
 chipsize = 10e3
 chip = Base_Chip(name,chipsize,chipsize)
