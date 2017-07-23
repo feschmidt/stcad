@@ -1,4 +1,5 @@
 import numpy as np
+import gdsCAD as cad
 from source_dev.chip import Base_Chip
 import source_dev.junction_ald_array as junction_array
 import source_dev.squid_ald_array as squid_array
@@ -12,10 +13,9 @@ dict_cavity = {'length': 6900,
             'lead1': 1000,          # should remain default like this
             'holedim': (80,100),
             'holemarker': True}
-
                 
 
-name = 'testcavities_v2'
+name = 'testcavities'
 testf = cavities.ShuntCavity(name,dict_cavity)
 testf.gen_full()
 
@@ -24,4 +24,5 @@ chip = Base_Chip(name,chipsize,chipsize)
 chip.add_component(testf.cell,(0,0))
 chip.add_ebpg_marker((1690,6560))
 #chip.add_TUlogo()
-chip.save_to_gds(show = True, save = True)
+chip.save_to_gds(show = False, save = True)
+

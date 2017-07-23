@@ -36,9 +36,10 @@ class ShuntCavity():
         self.r0 = 150
         self.top_cv = 8350
         self.bot_cv = 7600 #7594
+        # bot_cv should be the main variable depending on length of cavity. However, for this
+        # we need to restructure the creation of the meandering
 
-
-    # completely redo: gen_full with two gen_cavity, each with own centerwidth
+    # gen_full with two gen_cavity, each with own centerwidth
     # afterwards add elements in gen_full
     def gen_full(self):
 
@@ -99,7 +100,7 @@ class ShuntCavity():
         A = (stopx0-startx0) + 2*np.pi*r0 * 2 + (top_cv-bot_cv) * 4
         endx0 = stopx0+r0*8
         endx = length - (A - endx0) - gapwidth
-        #without any curves: cav_straight = endx - startx0
+        # without any curves: cav_straight = endx - startx0
 
         curve1 = cad.shapes.Disk((stopx0,top_cv),radius,inner_radius=inner_radius,initial_angle=90,
             final_angle=0)
@@ -124,20 +125,22 @@ class ShuntCavity():
         if gapwidth!=0:
             # Add hole for gJJ
             gJJ_box = cad.shapes.Rectangle((holex0, center-holedim[1]/2),(holex0+holedim[0],center+holedim[1]/2))
+            # Add marker for gJJ
             if holemarker == True:
-                gJJ_marker = [cad.core.Elements()] * 4
-                #for i in range(2):
-                box1 = cad.shapes.Rectangle((holex0+5,center+40),(holex0+10,center+45))
-                box2 = cad.shapes.Rectangle((holex0+10,center+35),(holex0+15,center+40))
-                gJJ_marker[0].add(box1)
-                gJJ_marker[0].add(box2)
-                gJJ_marker[1] = cad.utils.reflect(gJJ_marker[0],'x',origin=(holex0+holedim[0]/2,center))
-                gJJ_marker[2] = cad.utils.reflect(gJJ_marker[0],'y',origin=(holex0+holedim[0]/2,center))
-                gJJ_marker[3] = cad.utils.reflect(gJJ_marker[1],'y',origin=(holex0+holedim[0]/2,center))
+                gJJ_marker = cad.core.Cell('gJJ_marker')
+                box1=cad.shapes.Rectangle((holex0+5,center+40),(holex0+10,center+45))
+                box2=cad.shapes.Rectangle((holex0+10,center+35),(holex0+15,center+40))
+                gJJ_marker.add(box1)
+                gJJ_marker.add(box2)
+                gJJ_marker.add(cad.utils.reflect(box1,'x',origin=(holex0+holedim[0]/2,center)))
+                gJJ_marker.add(cad.utils.reflect(box2,'x',origin=(holex0+holedim[0]/2,center)))
+                gJJ_marker.add(cad.utils.reflect(box1,'y',origin=(holex0+holedim[0]/2,center)))
+                gJJ_marker.add(cad.utils.reflect(box2,'y',origin=(holex0+holedim[0]/2,center)))
+                gJJ_marker.add(cad.utils.rotate(box1,180,center=(holex0+holedim[0]/2,center)))
+                gJJ_marker.add(cad.utils.rotate(box2,180,center=(holex0+holedim[0]/2,center)))
         endhole = holex0+holedim[0]
 
         # Create second shunt (optional)
-        leadout = 0
         if shunts==2:
             leadout = 125
             shunt2 = self.gen_shunt((endhole,70),leadout,gap=gapwidth)
@@ -150,7 +153,8 @@ class ShuntCavity():
         holex0 = endx
         holedim = self.holedim
         launcher2 = cad.utils.translate(launcher2,(self.endshunt-(10000-llstart),0))   
-        # For future: fix second shunt. For length adjustments make meandering longer or shorter, and center it. For now this is sufficient.
+        # For future: fix second shunt. For length adjustments make meandering longer or shorter,
+        # and center it. For now this is sufficient.
         
         # Create cavity
         cavity1 = [cad.core.Elements()] * 3
@@ -163,6 +167,7 @@ class ShuntCavity():
             toadd.layer = self.layer_bottom
             cavity1[0].add(toadd)
 
+        # Complete shunt
         if gapwidth == 0:    
             # Add all elements with layer 2
             for toadd in [shunt1[2]]:
@@ -174,6 +179,7 @@ class ShuntCavity():
                 toadd.layer = self.layer_top
                 cavity1[2].add(toadd)
 
+        # Add second shunt (optional)
         if shunts==2:
             for toadd in [shunt2[0], shunt2[1], shunt2[4]]:
                 toadd.layer = self.layer_bottom
@@ -186,10 +192,14 @@ class ShuntCavity():
                     toadd.layer = self.layer_top
                     cavity1[0].add(toadd)
 
+        # Add hole and marker for graphene
         if gapwidth != 0:
-            for toadd in [gJJ_box, gJJ_marker[0], gJJ_marker[1], gJJ_marker[2], gJJ_marker[3]]:
-                toadd.layer = self.layer_bottom
-                cavity1[0].add(toadd)
+            cavity1[0].add(gJJ_box)
+            if holemarker == True:
+                for toadd in gJJ_marker:
+                    gJJ_marker.layer = self.layer_bottom
+                    cavity1[0].add(toadd)
+                # gJJ marker are missing from cavity2 ??
         
         
         # Create second cavity as mirrored version of first one
@@ -203,6 +213,7 @@ class ShuntCavity():
         '''
         leadin: tuple (x-coordinate, lendth)
         leadout: int length
+        gap: gapwidth between center conductor and ground
         '''
         # Connect in to shunt
         startx_in = leadin[0]   # x-coordinate
@@ -213,9 +224,9 @@ class ShuntCavity():
         # Create shunt
         shuntheight = self.shuntheight + 2*gap
         shuntlength = self.shuntlength + 2*gap
-        shunt_x1 = stopx_in #- gap
+        shunt_x1 = stopx_in
         shunt_y1 = self.center - shuntheight/2
-        shunt_x2 = shunt_x1 + shuntlength #+ gap
+        shunt_x2 = shunt_x1 + shuntlength
         shunt_y2 = shunt_y1 + shuntheight
         shunt_points = [(shunt_x1, shunt_y1),(shunt_x2, shunt_y2)]
 
@@ -224,7 +235,7 @@ class ShuntCavity():
         shunt_top_points = [(shunt_x1-top_dx, shunt_y1-top_dy),
                             (shunt_x2+top_dx, shunt_y2+top_dy)]
 
-        diel_dxy = self.diel_dxy      # 5um overlap
+        diel_dxy = self.diel_dxy
         shunt_diel_points = [(shunt_x1-top_dx-diel_dxy, shunt_y1-top_dy-diel_dxy),
                             (shunt_x2+top_dx+diel_dxy, shunt_y2+top_dy+diel_dxy)]
         
