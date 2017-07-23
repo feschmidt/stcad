@@ -2,7 +2,7 @@ import numpy as np
 from source_dev.chip import Base_Chip
 import source_dev.junction_ald_array as junction_array
 import source_dev.squid_ald_array as squid_array
-import source_dev.rfcavities_dcbias_v2 as cavities
+import source_dev.rfcavities_dcbias as cavities
 
 dict_cavity = {'length': 6900,
             'centerwidth': 10,

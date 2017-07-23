@@ -35,13 +35,24 @@ class ShuntCavity():
 
         self.r0 = 150
         self.top_cv = 8350
-        self.bot_cv = 7350 #7594
+        self.bot_cv = 7600 #7594
 
-    def gen_cavities(self):
+
+    # completely redo: gen_full with two gen_cavity, each with own centerwidth
+    # afterwards add elements in gen_full
+    def gen_full(self):
+
+        cavity_nogap = self.gen_cavities(gapwidth=0)
+        cavity_gap = self.gen_cavities(gapwidth=self.gapwidth)
+
+        for cavity in [cavity_nogap, cavity_gap]:
+            for i in range(len(cavity)):
+                self.cell.add(cavity[i])
+
+    def gen_cavities(self,gapwidth=0):
 
         length = self.length
-        centerwidth = self.centerwidth
-        gapwidth = self.gapwidth
+        centerwidth = self.centerwidth + 2*gapwidth
         shunts = self.shunts
 
         if shunts!=1 and shunts!=2:
@@ -52,21 +63,28 @@ class ShuntCavity():
         # Create first launcher
         launcherwidth = self.launcherwidth
         llstart = self.llstart          
-        llend = self.llend      
-        launcherpoints = [(700, center+(launcherwidth+centerwidth)/2),
-                        (1900, center+(launcherwidth+centerwidth)/2),
+        llend = self.llend
+        if gapwidth!=0:
+            x1_launcher = -500
+            y1_launcher = 230
+        else:
+            x1_launcher = 700
+            y1_launcher = 0  
+
+        launcherpoints = [(x1_launcher, center+(launcherwidth+centerwidth)/2+y1_launcher),
+                        (1900, center+(launcherwidth+centerwidth)/2+y1_launcher),
                         (llstart, center+centerwidth/2),
                         (llstart, center-centerwidth/2),
-                        (1900, center-(launcherwidth+centerwidth)/2),
-                        (700, center-(launcherwidth+centerwidth)/2)]
+                        (1900, center-(launcherwidth+centerwidth)/2-y1_launcher),
+                        (x1_launcher, center-(launcherwidth+centerwidth)/2-y1_launcher)]
         launcher = cad.core.Boundary(launcherpoints)
 
         # Create first shunt
-        shunt1 = self.gen_shunt((llstart,self.llength),0)
+        shunt1 = self.gen_shunt((llstart,self.llength),0,gap=gapwidth)
 
         # Cavity length starts here
         startx0 = shunt1[5]
-        stopx0 = startx0 + self.dict_cavity['lead1']
+        stopx0 = startx0 + self.dict_cavity['lead1']-gapwidth
         
         shunt1_cavity_points = [(startx0,center),(stopx0,center)]
         start_cavity = cad.core.Path(shunt1_cavity_points,centerwidth)
@@ -80,7 +98,8 @@ class ShuntCavity():
         # Calculate cavity length
         A = (stopx0-startx0) + 2*np.pi*r0 * 2 + (top_cv-bot_cv) * 4
         endx0 = stopx0+r0*8
-        self.endx = length - (A - endx0)
+        endx = length - (A - endx0) - gapwidth
+        #without any curves: cav_straight = endx - startx0
 
         curve1 = cad.shapes.Disk((stopx0,top_cv),radius,inner_radius=inner_radius,initial_angle=90,
             final_angle=0)
@@ -96,21 +115,43 @@ class ShuntCavity():
         curve4_lead = cad.core.Path([(stopx0+r0*7,bot_cv),(stopx0+r0*7,top_cv)],centerwidth)
         curve5 = cad.shapes.Disk((endx0,top_cv),radius,inner_radius=inner_radius,initial_angle=180,
             final_angle=90)
-        final_lead = cad.core.Path([(endx0,center),(self.endx,center)],centerwidth)
+        final_lead = cad.core.Path([(endx0,center),(endx,center)],centerwidth)
+
+        
+        holex0 = endx
+        holedim = self.holedim
+        holemarker = self.holemarker
+        if gapwidth!=0:
+            # Add hole for gJJ
+            gJJ_box = cad.shapes.Rectangle((holex0, center-holedim[1]/2),(holex0+holedim[0],center+holedim[1]/2))
+            if holemarker == True:
+                gJJ_marker = [cad.core.Elements()] * 4
+                #for i in range(2):
+                box1 = cad.shapes.Rectangle((holex0+5,center+40),(holex0+10,center+45))
+                box2 = cad.shapes.Rectangle((holex0+10,center+35),(holex0+15,center+40))
+                gJJ_marker[0].add(box1)
+                gJJ_marker[0].add(box2)
+                gJJ_marker[1] = cad.utils.reflect(gJJ_marker[0],'x',origin=(holex0+holedim[0]/2,center))
+                gJJ_marker[2] = cad.utils.reflect(gJJ_marker[0],'y',origin=(holex0+holedim[0]/2,center))
+                gJJ_marker[3] = cad.utils.reflect(gJJ_marker[1],'y',origin=(holex0+holedim[0]/2,center))
+        endhole = holex0+holedim[0]
 
         # Create second shunt (optional)
+        leadout = 0
         if shunts==2:
-            shunt2 = self.gen_shunt((self.endx,70),125)
-            # Create second launcher
-            launcher2 = cad.utils.reflect(launcher,'y',origin=(5000,5000))
-            launcher2 = cad.utils.translate(launcher2,(shunt2[5]-(10000-llstart),0))
+            leadout = 125
+            shunt2 = self.gen_shunt((endhole,70),leadout,gap=gapwidth)
+            self.endshunt = shunt2[5]
         else:
-            # Create second launcher
-            launcher2 = cad.utils.reflect(launcher,'y',origin=(5000,5000))
-            holex0 = self.endx
-            holedim = self.holedim
-            launcher2 = cad.utils.translate(launcher2,((holex0+holedim[0])-(10000-llstart),0))
-
+            self.endshunt = endhole
+        
+        # Create second launcher
+        launcher2 = cad.utils.reflect(launcher,'y',origin=(5000,5000))
+        holex0 = endx
+        holedim = self.holedim
+        launcher2 = cad.utils.translate(launcher2,(self.endshunt-(10000-llstart),0))   
+        # For future: fix second shunt. For length adjustments make meandering longer or shorter, and center it. For now this is sufficient.
+        
         # Create cavity
         cavity1 = [cad.core.Elements()] * 3
         # Add all elements with layer 1
@@ -121,50 +162,60 @@ class ShuntCavity():
                     launcher2]:
             toadd.layer = self.layer_bottom
             cavity1[0].add(toadd)
-        
-        # Add all elements with layer 2
-        for toadd in [shunt1[2]]:
-            toadd.layer = self.layer_diel
-            cavity1[1].add(toadd)
 
-        # Add all elements with layer 3
-        for toadd in [shunt1[3]]:
-            toadd.layer = self.layer_top
-            cavity1[2].add(toadd)
+        if gapwidth == 0:    
+            # Add all elements with layer 2
+            for toadd in [shunt1[2]]:
+                toadd.layer = self.layer_diel
+                cavity1[1].add(toadd)
+
+            # Add all elements with layer 3
+            for toadd in [shunt1[3]]:
+                toadd.layer = self.layer_top
+                cavity1[2].add(toadd)
 
         if shunts==2:
             for toadd in [shunt2[0], shunt2[1], shunt2[4]]:
                 toadd.layer = self.layer_bottom
                 cavity1[0].add(toadd)
-            for toadd in [shunt2[2]]:
-                toadd.layer = self.layer_diel
-                cavity1[0].add(toadd)
-            for toadd in [shunt2[3]]:
-                toadd.layer = self.layer_top
+            if gapwidth == 0:
+                for toadd in [shunt2[2]]:
+                    toadd.layer = self.layer_diel
+                    cavity1[0].add(toadd)
+                for toadd in [shunt2[3]]:
+                    toadd.layer = self.layer_top
+                    cavity1[0].add(toadd)
+
+        if gapwidth != 0:
+            for toadd in [gJJ_box, gJJ_marker[0], gJJ_marker[1], gJJ_marker[2], gJJ_marker[3]]:
+                toadd.layer = self.layer_bottom
                 cavity1[0].add(toadd)
         
         
         # Create second cavity as mirrored version of first one
-        cavity2 = [cad.utils.reflect(cavity1[i],'x',origin=(5000,5000)) for i in range(3)]
+        cavity2 = [cad.utils.reflect(cavity1[i],'x',origin=(5000,5000)) for i in range(len(cavity1))]
         
-        self.cell.add(cavity1[0])
-        self.cell.add(cavity2[0])
+        return (cavity1, cavity2)
         
 
     def gen_shunt(self,leadin,leadout,gap=0):
 
+        '''
+        leadin: tuple (x-coordinate, lendth)
+        leadout: int length
+        '''
         # Connect in to shunt
-        startx_in = leadin[0]
-        stopx_in = startx_in+leadin[1]
+        startx_in = leadin[0]   # x-coordinate
+        stopx_in = startx_in+leadin[1]-gap
         leadpoints_in = [(startx_in, self.center),(stopx_in,self.center)]
-        lead_in = cad.core.Path(leadpoints_in,self.centerwidth)
+        lead_in = cad.core.Path(leadpoints_in,self.centerwidth+2*gap)
 
         # Create shunt
         shuntheight = self.shuntheight + 2*gap
         shuntlength = self.shuntlength + 2*gap
-        shunt_x1 = stopx_in - gap
+        shunt_x1 = stopx_in #- gap
         shunt_y1 = self.center - shuntheight/2
-        shunt_x2 = shunt_x1 + shuntlength
+        shunt_x2 = shunt_x1 + shuntlength #+ gap
         shunt_y2 = shunt_y1 + shuntheight
         shunt_points = [(shunt_x1, shunt_y1),(shunt_x2, shunt_y2)]
 
@@ -183,110 +234,11 @@ class ShuntCavity():
 
         # Connect shunt to out
         startx_out = shunt_x2
-        stopx_out = startx_out+leadout
+        stopx_out = startx_out + leadout
         leadpoints_out = [(startx_out, self.center),(stopx_out,self.center)]
-        lead_out = cad.core.Path(leadpoints_out,self.centerwidth)
+        lead_out = cad.core.Path(leadpoints_out,self.centerwidth+2*gap)
 
         return (lead_in, shunt, shunt_diel, shunt_top, lead_out, stopx_out)
 
 
-
-    def gen_full(self):
-
-        length = self.length
-        centerwidth = self.centerwidth + 2*self.gapwidth
-        gapwidth = self.gapwidth
-        shunts = self.shunts
-
-        if shunts!=1 and shunts!=2:
-            raise ValueError('Number of shunts has to be either 1 or 2!')
-
-        center = self.center
-        # Create first launcher
-        launcherwidth = self.launcherwidth
-        llstart = self.llstart          
-        llend = self.llend      
-        launcherpoints = [(-500, center+(launcherwidth+centerwidth)/2+230),
-                        (1900, center+(launcherwidth+centerwidth)/2+230),
-                        (llstart, center+centerwidth/2),
-                        (llstart, center-centerwidth/2),
-                        (1900, center-(launcherwidth+centerwidth)/2-230),
-                        (-500, center-(launcherwidth+centerwidth)/2-230)]
-        launcher = cad.core.Boundary(launcherpoints)
-
-        # Create first shunt
-        shunt1 = self.gen_shunt((llstart,self.llength),0,gap=gapwidth)
-
-        # Cavity length starts here
-        startx0 = shunt1[5]
-        stopx0 = startx0 + self.dict_cavity['lead1']
-        
-        shunt1_cavity_points = [(startx0,center),(stopx0,center)]
-        start_cavity = cad.core.Path(shunt1_cavity_points,centerwidth)
-
-        r0 = self.r0
-        radius = r0+centerwidth/2
-        inner_radius = r0-centerwidth/2
-        top_cv = self.top_cv
-        bot_cv = self.bot_cv
-        
-        # Calculate cavity length from before
-        
-        endx0 = stopx0+r0*8
-        endx = self.endx
-
-        curve1 = cad.shapes.Disk((startx0,top_cv),radius,inner_radius=inner_radius,initial_angle=90,
-            final_angle=0)
-        curve1_lead = cad.core.Path([(startx0+r0, top_cv),(startx0+r0,bot_cv)],centerwidth)
-        curve2 = cad.shapes.Disk((startx0+r0*2,bot_cv),radius,inner_radius=inner_radius,initial_angle=180,
-            final_angle=360)
-        curve2_lead = cad.core.Path([(startx0+r0*3,bot_cv),(startx0+r0*3,top_cv)],centerwidth)
-        curve3 = cad.shapes.Disk((startx0+r0*4,top_cv),radius,inner_radius=inner_radius,initial_angle=180,
-            final_angle=0)
-        curve3_lead = cad.core.Path([(startx0+r0*5,top_cv),(startx0+r0*5,bot_cv)],centerwidth)
-        curve4 = cad.shapes.Disk((startx0+r0*6,bot_cv),radius,inner_radius=inner_radius,initial_angle=180,
-            final_angle=360)
-        curve4_lead = cad.core.Path([(startx0+r0*7,bot_cv),(startx0+r0*7,top_cv)],centerwidth)
-        curve5 = cad.shapes.Disk((endx0,top_cv),radius,inner_radius=inner_radius,initial_angle=180,
-            final_angle=90)
-        final_lead = cad.core.Path([(endx0,center),(endx - self.gapwidth,center)],centerwidth)
-
-        # Add hole for gJJ
-        holex0 = endx - self.gapwidth
-        holedim = self.holedim
-        holemarker = self.holemarker
-        gJJ_box = cad.shapes.Rectangle((holex0, center-holedim[1]/2),(holex0+holedim[0],center+holedim[1]/2))
-        if holemarker == True:
-            gJJ_marker = [cad.core.Elements()] * 4
-            #for i in range(2):
-            box1 = cad.shapes.Rectangle((holex0+5,center+40),(holex0+10,center+45))
-            box2 = cad.shapes.Rectangle((holex0+10,center+35),(holex0+15,center+40))
-            gJJ_marker[0].add(box1)
-            gJJ_marker[0].add(box2)
-            gJJ_marker[1] = cad.utils.reflect(gJJ_marker[0],'x',origin=(holex0+holedim[0]/2,center))
-            gJJ_marker[2] = cad.utils.reflect(gJJ_marker[0],'y',origin=(holex0+holedim[0]/2,center))
-            gJJ_marker[3] = cad.utils.reflect(gJJ_marker[1],'y',origin=(holex0+holedim[0]/2,center))
-
-        # Create second launcher
-        launcher2 = cad.utils.reflect(launcher,'y',origin=(5000,5000))
-        launcher2 = cad.utils.translate(launcher2,((holex0+holedim[0])-(10000-llstart),0))
-
-        # Create cavity
-        cavity1 = cad.core.Elements()
-        # Add all elements with layer 1
-        for toadd in [launcher, shunt1[0], shunt1[1], shunt1[4],
-                    start_cavity, curve1,
-                    curve1_lead, curve2, curve2_lead, curve3, curve3_lead,
-                    curve4, curve4_lead, curve5, final_lead,
-                    gJJ_box, gJJ_marker[0], gJJ_marker[1], gJJ_marker[2], gJJ_marker[3],
-                    launcher2,]:
-            toadd.layer = self.layer_bottom
-            cavity1.add(toadd)
-        
-        # Create second cavity as mirrored version of first one
-        cavity2 = cad.utils.reflect(cavity1,'x',origin=(5000,5000))
-        
-        self.cell.add(cavity1)
-        self.cell.add(cavity2)
-    
 
