@@ -16,7 +16,7 @@ class Base_Chip():
         self.ydim = ydim
         self.layer_label = 20
         self.layer_box = 21
-        self.layer_ebpgmarker = 22
+        self.layer_alignment = 22
         self.layer_testpads = 23
 
         self.cell = cad.core.Cell(name)
@@ -64,7 +64,7 @@ class Base_Chip():
         y = [pos[1], pos[1], pos[1] + spacing, pos[1] + spacing]
         for i in range(4):
             box = cad.shapes.Rectangle((x[i]-size/2,y[i]-size/2),(x[i]+size/2,y[i]+size/2),
-                                        layer = self.layer_ebpgmarker)
+                                        layer = self.layer_alignment)
             marker[0].add(box)
         marker[1] = cad.core.CellReference(marker[0], origin=(self.xdim-2*pos[0]-spacing,0))
         marker[2] = cad.core.CellReference(marker[0], origin=(self.xdim-2*pos[0]-spacing,self.ydim-2*pos[1]-spacing))
