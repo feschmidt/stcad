@@ -14,7 +14,7 @@ def make_rounded_edges(rectangle, radius, dict_corners):
 	Note that the length of the corner list cannot exceed the corners
 	of the object. If the length is smaller, the first n corners will be 
 	rounded and smoothed
-	This function make an object with rounded corners
+	This function returns an object with rounded corners
 	'''
 
 	original_layer = rectangle.layer
@@ -132,7 +132,7 @@ def correct_for_multipol(pol):
     Inputs are:
         pol, Suspected Multipolygon
     Takes the main polygon of a multipolygon.
-    Tipically used to solve the problem of non-overlapping polygons being substracted.
+    Typically used to solve the problem of non-overlapping polygons being substracted.
     '''
     pol_type = pol.geom_type
     if pol_type == 'MultiPolygon':
