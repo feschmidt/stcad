@@ -42,14 +42,16 @@ class Base_Chip():
 
 
     def make_layout(self):
-        
-        box=cad.shapes.Box((-self.xdim/2, -self.ydim/2), (self.xdim, self.ydim),
+        '''
+        Generate chip with dimensions xdim,ydim
+        '''
+        box=cad.shapes.Box((-self.xdim/2, -self.ydim/2), (self.xdim/2, self.ydim/2),
 				         width=self.boxwidth, layer =self.layer_box)
 
         date = time.strftime("%d/%m/%Y")
         #The label is added 100 um on top of the main cell
         label_grid_chip = cad.shapes.LineLabel( self.name + "  " +\
-								         date,50,(0,self.ydim/2-100),
+								         date,50,(-200,self.ydim/2-500),
 								         layer=self.layer_label)
 
 
@@ -92,9 +94,9 @@ class Base_Chip():
         self.cell.add(cell_obj,origin=pos)
 
     
-    def add_ebpg_marker(self, pos=(0,0), size=20, spacing=200):
+    def add_ebpg_marker(self, pos=(-3310,-1560), size=20, spacing=200):
         '''
-        4 marker each 20um rectangular and 200um spaced apart
+        4 ebeam marker each 20um rectangular and 200um spaced apart
         params pos : tuple of positions
         '''
         marker = [cad.core.Cell('EBEAM')] * 4
@@ -104,28 +106,32 @@ class Base_Chip():
             box = cad.shapes.Rectangle((x[i]-size/2,y[i]-size/2),(x[i]+size/2,y[i]+size/2),
                                         layer = self.layer_alignment)
             marker[0].add(box)
-        marker[1] = cad.core.CellReference(marker[0], origin=(self.xdim-2*pos[0]-spacing,0))
-        marker[2] = cad.core.CellReference(marker[0], origin=(self.xdim-2*pos[0]-spacing,self.ydim-2*pos[1]-spacing))
-        marker[3] = cad.core.CellReference(marker[0], origin=(0,self.ydim-2*pos[1]-spacing))
+        marker[1] = cad.core.CellReference(marker[0], origin=(-2*pos[0]-spacing,-2*pos[1]-spacing))
+        marker[2] = cad.core.CellReference(marker[0], origin=(0,-2*pos[1]-spacing))
+        marker[3] = cad.core.CellReference(marker[0], origin=(-2*pos[0]-spacing,0))
         self.cell.add(marker)
 
 
-    def save_to_gds(self, save = True, show = True):
+    def save_to_gds(self, loc = 'testing/', save = True, show = True):
+        '''
+        Save and show gds file
+        Default location in testing/, can be adjusted via loc
+        '''
         layout = cad.core.Layout('MAIN_CHIP')
         layout.add(self.cell)
         if save:
-            layout.save(self.name + '.gds')
+            layout.save(loc + self.name + '.gds')
         if show:
             layout.show()
 
 
-    def add_bond_testpads(self, pos=(0,0), dim=(300,300), num=4):
+    def add_bond_testpads(self, pos=(-2000,-2000), dim=(300,300), num=4):
         '''
         value(num) bonding pads with dimension dim (tuple) at position pos (tuple)
         '''
         pads = cad.core.Cell('TESTPADS')
-        x = [pos[0], self.xdim-pos[0], self.xdim-pos[0], pos[0]]
-        y = [pos[1], pos[1], self.ydim-pos[1], self.ydim-pos[1]]
+        x = [pos[0], -pos[0], -pos[0], pos[0]]
+        y = [pos[1], pos[1], -pos[1], -pos[1]]
         for i in range(num):
             box = cad.shapes.Rectangle((x[i]-dim[0]/2,y[i]-dim[1]/2),(x[i]+dim[0]/2,y[i]+dim[1]/2), layer = self.layer_testpads)
             pads.add(box)
@@ -133,6 +139,9 @@ class Base_Chip():
 
 
     def add_photolitho_marker(self, pos=(0,0)):
+        '''
+        Add alignment marker for photolithography
+        '''
         marker = cad.core.Cell('PHOTO')
         amarks0 = cad.templates.AlignmentMarks(('A','C'),(1,2))
         amarks = cad.core.CellReference(amarks0).translate(pos)
@@ -141,6 +150,9 @@ class Base_Chip():
     
     
     def add_photolitho_vernier(self, pos=(-500,-500)):
+        '''
+        Add vernier structures for determining alignment precision
+        '''
         verniers = cad.core.Cell('VERNIER')
         vmarks0 = cad.templates.Verniers(('A','B'),(1,2))
         vmarks = cad.core.CellReference(vmarks0).translate(pos)
@@ -149,6 +161,9 @@ class Base_Chip():
         
         
     def add_dicing_marker(self, pos=(0,0), hor=True, vert=True):
+        '''
+        Add rectangular dicing marks across the entire chip/wafer
+        '''
         marker = cad.core.Cell('DICING')
         hmarks0 = cad.shapes.Rectangle((-500,-125),(500,125))
         vmarks0 = cad.shapes.Rectangle((-125,-500),(125,500))

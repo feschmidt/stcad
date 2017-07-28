@@ -4,6 +4,7 @@ import gdsCAD as cad
 class ShuntCavity():
     '''
     Class for RF cavities with one or two shunt capacitors at either, and one hole at the far, end.
+    Note: The design is currently centered around (5000,5000) and not the (0,0) origin of the Base_Chip class!
     '''
     def __init__(self, name, dict_cavity):
 
@@ -76,7 +77,7 @@ class ShuntCavity():
         llstart = self.llstart          
         llend = self.llend
         if gapwidth!=0:
-            x1_launcher = -500
+            x1_launcher = 0#-500
             y1_launcher = 230
         else:
             x1_launcher = 700
@@ -160,10 +161,10 @@ class ShuntCavity():
             self.endshunt = endhole
         
         # Create second launcher
-        launcher2 = cad.utils.reflect(launcher,'y',origin=(5000,5000))
+        launcher2 = cad.utils.reflect(launcher,'y',origin=(5e3,5e3))
         holex0 = endx
         holedim = self.holedim
-        launcher2 = cad.utils.translate(launcher2,(self.endshunt-(10000-llstart),0))   
+        launcher2 = cad.utils.translate(launcher2,(self.endshunt-(10e3-llstart),0))   
         # For future: fix second shunt. For length adjustments make meandering longer or shorter,
         # and center it. For now this is sufficient.
         
@@ -214,7 +215,7 @@ class ShuntCavity():
         
         
         # Create second cavity as mirrored version of first one
-        cavity2 = [cad.utils.reflect(cavity1[i],'x',origin=(5000,5000)) for i in range(len(cavity1))]
+        cavity2 = [cad.utils.reflect(cavity1[i],'x',origin=(5e3,5e3)) for i in range(len(cavity1))]
         
         return (cavity1, cavity2)
         

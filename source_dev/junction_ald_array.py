@@ -38,7 +38,7 @@ class Junctionchip():
         jjstep = self.dict_junctions['jjstep']
         jjlength = np.arange(jjmin,jjmax+1,jjstep)
         
-        cwidth = 10
+        cwidth = 20
         centerpoints = [(0, tripeak - jjwidth / 2),
                         (0, tripeak + 100 + cwidth / 2),
                         (self.tlength, tripeak + 100 + cwidth / 2),

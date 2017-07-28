@@ -37,7 +37,7 @@ class SQUIDchip():
         jjmax = self.dict_junctions['jjmax']
         jjstep = self.dict_junctions['jjstep']
     
-        cwidth = 10
+        cwidth = 20
         centerpoints = [(0, tripeak - cwidth / 2),
                         (0, tripeak + 100 + cwidth / 2 +dim[1]),
                         (self.tlength-5, tripeak + 100 + cwidth / 2 +dim[1]),
