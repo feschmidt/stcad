@@ -6,37 +6,75 @@ class Base_Chip():
 	
     """
     This object represent a single chip and can be considered as the parentobject.
-    The reference position is 0,0
+    The reference position is the center of the chip, that is (0,0)
+    Reserved layers: 20, 21, 22, 23
+    Options for wafer:
+        False --> rectangular chip
+        1 --> 1" wafer
+        2 --> 2" wafer etc
     """
 
-    def __init__(self, name, xdim, ydim):
+    def __init__(self, name, xdim=1000, ydim=1000, frame=True, wafer=False):
 
         self.name = name
         self.xdim = xdim
         self.ydim = ydim
+        self.wafer = wafer
+        wafer_d = [0, 25.4e3, 50.8e3, 76.2e3, 100e3, 125e3, 150e3]  # wafer diameters in um
+        
+        if xdim < 1001 and ydim < 1001:
+            self.boxwidth = 10
+        else:
+            self.boxwidth = 100
+        
+            
         self.layer_label = 20
         self.layer_box = 21
         self.layer_alignment = 22
         self.layer_testpads = 23
-
+        
         self.cell = cad.core.Cell(name)
-
-        self.make_layout()
+        if frame==True:
+            if wafer==False:
+                self.make_layout()
+            else:
+                self.make_wafer(wafer_d[wafer]/2)
 
 
     def make_layout(self):
         
-        box=cad.shapes.Box((0,0), (self.xdim, self.ydim),
-				         width=10, layer =self.layer_box)
+        box=cad.shapes.Box((-self.xdim/2, -self.ydim/2), (self.xdim, self.ydim),
+				         width=self.boxwidth, layer =self.layer_box)
 
         date = time.strftime("%d/%m/%Y")
         #The label is added 100 um on top of the main cell
         label_grid_chip = cad.shapes.LineLabel( self.name + "  " +\
-								         date,50,(self.xdim/2.,self.ydim-100),
+								         date,50,(0,self.ydim/2-100),
 								         layer=self.layer_label)
 
 
         self.cell.add(box)
+        self.cell.add(label_grid_chip)
+        
+        
+    def make_wafer(self,wafer_r):
+        '''
+        Generate wafer with primary flat on the left. From https://coresix.com/products/wafers/ I estimated that the angle defining the wafer flat to arctan(flat/2 / radius)
+        '''
+        angled = 18
+        angle = angled*np.pi/180
+        circ = cad.shapes.Circle((0,0), wafer_r, width=self.boxwidth, initial_angle=180+angled, final_angle=360+180-angled, layer=self.layer_box)
+        flat = cad.core.Path([(-wafer_r*np.cos(angle),wafer_r*np.sin(angle)),(-wafer_r*np.cos(angle),-wafer_r*np.sin(angle))], width=self.boxwidth, layer=self.layer_box)
+
+        date = time.strftime("%d/%m/%Y")
+        #The label is added 100 um on top of the main cell
+        label_grid_chip = cad.shapes.LineLabel( self.name + "  " +\
+								         date,500,(-2e3,wafer_r-1e3),
+								         layer=self.layer_label)
+
+
+        self.cell.add(circ)
+        self.cell.add(flat)
         self.cell.add(label_grid_chip)
 
 
@@ -45,16 +83,16 @@ class Base_Chip():
         params cell_obj : cell object to add to maincell
         params pos : tuple of positions
         """
-        if pos[0]> self.xdim or pos[0]<0:
+        if pos[0]> self.xdim/2 or pos[0]<-self.xdim/2:
             raise ValueError(" component lies out of layout") 
 
-        if pos[1]> self.ydim or pos[1]<0:
+        if pos[1]> self.ydim/2 or pos[1]<-self.ydim/2:
             raise ValueError(" component lies out of layout") 
 
         self.cell.add(cell_obj,origin=pos)
 
     
-    def add_ebpg_marker(self, pos=(1000,1000), size=20, spacing=200):
+    def add_ebpg_marker(self, pos=(0,0), size=20, spacing=200):
         '''
         4 marker each 20um rectangular and 200um spaced apart
         params pos : tuple of positions
@@ -81,7 +119,7 @@ class Base_Chip():
             layout.show()
 
 
-    def add_bond_testpads(self, pos=(1000,1000), dim=(300,300), num=4):
+    def add_bond_testpads(self, pos=(0,0), dim=(300,300), num=4):
         '''
         value(num) bonding pads with dimension dim (tuple) at position pos (tuple)
         '''
@@ -94,7 +132,7 @@ class Base_Chip():
         self.cell.add(pads)
 
 
-    def add_photolitho_marker(self, pos=(3000,3000)):
+    def add_photolitho_marker(self, pos=(0,0)):
         marker = cad.core.Cell('PHOTO')
         amarks0 = cad.templates.AlignmentMarks(('A','C'),(1,2))
         amarks = cad.core.CellReference(amarks0).translate(pos)
@@ -102,7 +140,7 @@ class Base_Chip():
         self.cell.add(amarks)
     
     
-    def add_photolitho_vernier(self, pos=(2500,2500)):
+    def add_photolitho_vernier(self, pos=(-500,-500)):
         verniers = cad.core.Cell('VERNIER')
         vmarks0 = cad.templates.Verniers(('A','B'),(1,2))
         vmarks = cad.core.CellReference(vmarks0).translate(pos)
@@ -110,7 +148,7 @@ class Base_Chip():
         self.cell.add(verniers)
         
         
-    def add_dicing_marker(self, pos=(5000,5000), hor=True, vert=True):
+    def add_dicing_marker(self, pos=(0,0), hor=True, vert=True):
         marker = cad.core.Cell('DICING')
         hmarks0 = cad.shapes.Rectangle((-500,-125),(500,125))
         vmarks0 = cad.shapes.Rectangle((-125,-500),(125,500))
@@ -126,7 +164,7 @@ class Base_Chip():
     
     '''
     # Disabled for now since issue with dxfImport    
-    def add_TUlogo(self, pos=(3000,100)):
+    def add_TUlogo(self, pos=(0,100)):
         # logo is added 100um below bottom edge of chip
         logo = cad.core.DxfImport('examples/TU_Delft_logo_Black.dxf',scale=1.0)
         logo.layer=self.layer_label

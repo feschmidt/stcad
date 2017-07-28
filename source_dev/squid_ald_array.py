@@ -2,7 +2,7 @@ import numpy as np
 import gdsCAD as cad
 import dc_24pin
 
-class Junctionchip():
+class SQUIDchip():
 
     def __init__(self, name, dict_pads, dict_junctions, x0 = -100, y0 = -2200, 
         tlength = 1505):
