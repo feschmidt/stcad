@@ -108,6 +108,21 @@ class Base_Chip():
         vmarks = cad.core.CellReference(vmarks0).translate(pos)
         verniers.add(vmarks)
         self.cell.add(verniers)
+        
+        
+    def add_dicing_marker(self, pos=(5000,5000), hor=True, vert=True):
+        marker = cad.core.Cell('DICING')
+        hmarks0 = cad.shapes.Rectangle((-500,-125),(500,125))
+        vmarks0 = cad.shapes.Rectangle((-125,-500),(125,500))
+        for xx,yy in zip(np.arange(-self.xdim/4,self.xdim/4+1,1000),np.arange(-self.ydim/4,self.ydim/4+1,1000)):
+            if hor==True:
+                hmarks = cad.utils.translate(hmarks0, (2*xx+pos[0],pos[1]))
+                marker.add(hmarks)
+            if vert==True:
+                vmarks = cad.utils.translate(vmarks0, (pos[0],2*yy+pos[1]))
+                marker.add(vmarks)
+        self.cell.add(marker)
+                
     
     '''
     # Disabled for now since issue with dxfImport    
