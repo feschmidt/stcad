@@ -1,6 +1,6 @@
 import numpy as np
 from source_dev.chip import Base_Chip
-import source_dev.junction_ald_array_test as junction_array
+import source_dev.junction_ald_array as junction_array
 import source_dev.squid_ald_array as squid_array
 """
 For junctiontest layer 14,20,21 reserved

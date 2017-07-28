@@ -58,6 +58,9 @@ class ShuntCavity():
                 self.cell.add(cavity[i])
 
     def gen_cavities(self,gapwidth=0):
+    '''
+    Create the individual cavity. Gapwidth = 0: center conductor. Finite gapwidth: Gaps around
+    '''
 
         length = self.length
         centerwidth = self.centerwidth + 2*gapwidth
@@ -108,7 +111,8 @@ class ShuntCavity():
         endx0 = stopx0+r0*8
         endx = length - (A - endx0) - gapwidth
         # without any curves: cav_straight = endx - startx0
-
+        
+        # Do the wiggles
         curve1 = cad.shapes.Disk((stopx0,top_cv),radius,inner_radius=inner_radius,initial_angle=90,
             final_angle=0)
         curve1_lead = cad.core.Path([(stopx0+r0, top_cv),(stopx0+r0,bot_cv)],centerwidth)
@@ -125,7 +129,7 @@ class ShuntCavity():
             final_angle=90)
         final_lead = cad.core.Path([(endx0,center),(endx,center)],centerwidth)
 
-        
+        # Create hole at the end
         holex0 = endx
         holedim = self.holedim
         holemarker = self.holemarker
@@ -216,8 +220,8 @@ class ShuntCavity():
         
 
     def gen_shunt(self,leadin,leadout,gap=0):
-
         '''
+        Create shunt capacitors
         leadin: tuple (x-coordinate, lendth)
         leadout: int length
         gap: gapwidth between center conductor and ground

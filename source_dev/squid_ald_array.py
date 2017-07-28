@@ -6,6 +6,9 @@ class Junctionchip():
 
     def __init__(self, name, dict_pads, dict_junctions, x0 = -100, y0 = -2200, 
         tlength = 1505):
+        '''
+        Class for ALD SQUIDs. These are based on vertical tunnel barriers with a two-step process.
+        '''
  
         self.name = name
         self.dict_pads = dict_pads
@@ -17,8 +20,11 @@ class Junctionchip():
         self.layer_bottom = 1
         self.layer_top = 2
 
-    def gen_junctions(self, dim = (50,50), marker = True, vernier = True, testpads = True,
-                        save = True, show = True):
+    def gen_junctions(self, dim = (50,50)):
+        '''
+        Consists of a centerline that spreads out to 6 individual SQUIDs
+        First creates bottom row of JJs, finally uses dc_24pin to generate the full 4x4 array
+        '''
         
         padwidth = self.dict_pads['width']
         padlength = self.dict_pads['length']
@@ -79,9 +85,7 @@ class Junctionchip():
                 self.padgroup[ll-1].add(squid_right)
 
         # Create full array by inputting bottom junction row into dc_24pin method gen_full_array
-        
         self.cell = dc_24pin.gen_full_array(padgroup = self.padgroup)
-        #, marker = marker, vernier = vernier, testpads = testpads)
 
 
 
