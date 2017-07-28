@@ -2,7 +2,9 @@ import numpy as np
 import gdsCAD as cad
 
 class ShuntCavity():
-
+    '''
+    Class for RF cavities with one or two shunt capacitors at either, and one hole at the far, end.
+    '''
     def __init__(self, name, dict_cavity):
 
         self.name = name
@@ -42,6 +44,11 @@ class ShuntCavity():
     # gen_full with two gen_cavity, each with own centerwidth
     # afterwards add elements in gen_full
     def gen_full(self):
+    '''
+    First creates the center conductor with gapwidth = 0
+    Second creates the space around the conductor, finite gapwidth
+    Add everything together. Finally, in LayoutBeamer do P-XOR
+    '''
 
         cavity_nogap = self.gen_cavities(gapwidth=0)
         cavity_gap = self.gen_cavities(gapwidth=self.gapwidth)
