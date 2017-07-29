@@ -24,7 +24,7 @@ dict_junctions = {'bjunction_width':2,
 				'layer':2}
 
 
-first_qubit = transmon.Singlejuction_transmon('qubit_100nm',dict_pads,
+first_qubit = transmon.Singlejunction_transmon('qubit_100nm',dict_pads,
 											dict_junctions,short = False,
 											junctiontest = True)
 first_qubit.gen_pattern()
@@ -36,7 +36,7 @@ first_qubit.gen_pattern()
 qubit_910nm = first_qubit.cell
 
 
-chip = Base_Chip('Dosetest Al coating chip',8000,8000)
-chip.add_component(qubit_100nm,(4000,7000))
-chip.add_component(qubit_910nm,(4300,7000))
+chip = Base_Chip('Dosetest Al coating chip',1000,1000)
+chip.add_component(qubit_100nm,(-100,0))
+chip.add_component(qubit_910nm,(300,0))
 chip.save_to_gds(show=True, save= False)

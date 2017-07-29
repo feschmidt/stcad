@@ -2,8 +2,8 @@ import numpy as np
 import gdsCAD as cad
 import time
 
+
 class Base_Chip():
-	
 
     """
     This object represent a single chip and can be considered as the parentobject.
@@ -14,9 +14,8 @@ class Base_Chip():
         1 --> 1" wafer
         2 --> 2" wafer etc
     """
-
     def __init__(self, name, xdim=1000, ydim=1000, frame=True, wafer=False):
-
+        
         self.name = name
         self.xdim = xdim
         self.ydim = ydim
@@ -47,13 +46,14 @@ class Base_Chip():
         Generate chip with dimensions xdim,ydim
         '''
         box=cad.shapes.Box((-self.xdim/2, -self.ydim/2), (self.xdim/2, self.ydim/2),
-				         width=self.boxwidth, layer =self.layer_box)
+                         width=self.boxwidth, layer =self.layer_box)
 
         date = time.strftime("%d/%m/%Y")
-        #The label is added 100 um on top of the main cell
+        # The label is added 100 um on top of the main cell
         label_grid_chip = cad.shapes.LineLabel( self.name + "  " +\
-								         date,50,(-200,self.ydim/2-500),
-								         layer=self.layer_label)
+                                         date,self.boxwidth,
+                                         (0,self.ydim/2 - 2*self.boxwidth),
+                                         layer=self.layer_label)
 
 
         self.cell.add(box)
@@ -70,10 +70,10 @@ class Base_Chip():
         flat = cad.core.Path([(-wafer_r*np.cos(angle),wafer_r*np.sin(angle)),(-wafer_r*np.cos(angle),-wafer_r*np.sin(angle))], width=self.boxwidth, layer=self.layer_box)
 
         date = time.strftime("%d/%m/%Y")
-        #The label is added 100 um on top of the main cell
+        # The label is added 100 um on top of the main cell
         label_grid_chip = cad.shapes.LineLabel( self.name + "  " +\
-								         date,500,(-2e3,wafer_r-1e3),
-								         layer=self.layer_label)
+                                         date,500,(-2e3,wafer_r-1e3),
+                                         layer=self.layer_label)
 
 
         self.cell.add(circ)
@@ -186,4 +186,3 @@ class Base_Chip():
         logo.layer=self.layer_label
         self.cell.add(logo)
     '''
-
