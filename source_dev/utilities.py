@@ -14,7 +14,9 @@ def make_rounded_edges(rectangle, radius, dict_corners):
 	Note that the length of the corner list cannot exceed the corners
 	of the object. If the length is smaller, the first n corners will be 
 	rounded and smoothed
-	This function make an object with rounded corners
+
+	This function returns an object with rounded corners
+
 	'''
 
 	original_layer = rectangle.layer
@@ -132,7 +134,9 @@ def correct_for_multipol(pol):
     Inputs are:
         pol, Suspected Multipolygon
     Takes the main polygon of a multipolygon.
-    Tipically used to solve the problem of non-overlapping polygons being substracted.
+
+    Typically used to solve the problem of non-overlapping polygons being substracted.
+
     '''
     pol_type = pol.geom_type
     if pol_type == 'MultiPolygon':
@@ -142,92 +146,4 @@ def correct_for_multipol(pol):
         max_area_id = np.argmax(area)
         pol = pol.geoms[max_area_id]
     return pol
-
-
-# width = 10
-# height = 10
-
-# pad = cad.shapes.Rectangle((0,0),(width,height))
-# pad.layer=1
-
-# # corner_coord = pad.points
-# # d= np.flipud(corner_coord)
-
-# # rot=0
-# # rectangle_shapely = poly_to_shapely(pad)
-
-# # mask_gdscad =mask_disk(0.7,layer=2).rotate(rot).translate(d[0]-0.0000001)
-
-# # mask_shapely = poly_to_shapely(mask_gdscad)
-
-# # rounded_rect = rectangle_shapely.difference(mask_shapely)
-
-# # out = shapely_to_poly(rounded_rect)
-
-# corners ={}
-# corners['BL'] = 0
-# corners['BR'] = 1
-# corners['TR'] = 2
-# corners['TL'] = 3
-# # #
-# out = make_rounded_edges(pad, radius=0.4,dict_corners=corners)#,'TL'])
-
-
-# #
-# cell.add(out)
-# # cell.add(mask_gdscad)
-# layout = cad.core.Layout('LIBRARY')
-# layout.add(cell)
-# layout.show()
-
-# # print co.bounding_box
-# ----------------------------------------------------------------------
-# height = 0
-# top_width = 5
-# fork_height = height+ 20
-# fork_depth = 2
-# base_width = 20
-# top_width = 10
-
-
-# # box=shapes.Rectangle((-l,-l), (l,l), layer=2)
-# # trapezoid = core.Boundary( [(-0.5*base_width,0),
-# # 										(0.5*base_width,0),
-# # 										(0.5*top_width,height),
-# # 										(-0.5*top_width,height),
-# # 										(-0.5*base_width,0)])
-# fork = cad.core.Boundary([(-0.5*top_width,height),
-# 							(0.5*top_width,height),
-# 							(0.5*top_width,fork_height),
-# 							(0.5*top_width - top_width/3.,fork_height),
-# 							(0.5*top_width - top_width/3.,fork_height-fork_depth),
-# 							(0.5*top_width - 2*top_width/3.,fork_height-fork_depth),
-# 							(0.5*top_width - 2*top_width/3.,fork_height),
-# 							(-0.5*top_width ,fork_height),
-# 							(-0.5*top_width,0)])
-
-
-# corners = collections.OrderedDict()
-# corners['BLO'] = 0
-# corners['BR1'] = 1
-# corners['TR2'] = 2
-# corners['TL3'] = 3
-# corners['BR4O'] = 4
-# corners['BL5O'] = 5
-# corners['TR6'] = 6
-# corners['TL7'] = 7
-
-# print corners
-# # #
-# out = make_rounded_edges(fork, radius=0.3,dict_corners=corners)#,'TL'])
-# out.points[0] = [-10,0]
-# out.points[-1] = [-10,0]
-# print out.points
-# cell=cad.core.Cell('Tna')
-
-# cell.add(out)
-# # cell.add(mask_gdscad)
-# layout = cad.core.Layout('LIBRARY')
-# layout.add(cell)
-# layout.show()
 

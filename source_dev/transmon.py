@@ -5,7 +5,8 @@ import utilities
 import collections
 
 
-class Singlejuction_transmon():
+class Singlejunction_transmon():
+
 	"""
 	This class returns a single junction Yale Transmon
 	"""
