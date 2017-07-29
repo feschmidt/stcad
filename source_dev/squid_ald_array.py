@@ -36,28 +36,34 @@ class SQUIDchip():
         jjmin = self.dict_junctions['jjmin']
         jjmax = self.dict_junctions['jjmax']
         jjstep = self.dict_junctions['jjstep']
+        jjlength = np.arange(jjmin,jjmax+1,jjstep)
+        amount = len(jjlength)
     
         cwidth = 20
+        drain = 100
+        source = 100
         centerpoints = [(0, tripeak - cwidth / 2),
-                        (0, tripeak + 100 + cwidth / 2 +dim[1]),
-                        (self.tlength-5, tripeak + 100 + cwidth / 2 +dim[1]),
-                        (- self.tlength, tripeak + 100 + cwidth / 2 +dim[1])]
+                        (0, tripeak + source + dim[1] + drain + cwidth / 2),
+                        (self.tlength-5, tripeak + source + dim[1] + drain + cwidth / 2),
+                        (- self.tlength, tripeak + source + dim[1] + drain + cwidth / 2)]
         centerline = cad.core.Path(centerpoints, cwidth, layer = self.layer_bottom)
 
         self.padgroup = [cad.core.Cell('padgroup')] * 2
         self.padgroup[0].add(centerline)
 
-        for k,i in enumerate(range(-3, 4)):
+        for k,i in zip(jjlength,range(-amount/2+1,amount/2+2)):
+            if i>=0:
+                k=k-1
             xs = (padwidth + padspace) * i
             squid_left = cad.core.Path([[xs,tripeak-jjwidth/2],
-                                    [xs,tripeak+dim[1]],
-                                    [xs-dim[0]/2,tripeak+dim[1]],
-                                    [xs-dim[0]/2,tripeak+2*dim[1]+(k+1)*jjstep]],
+                                    [xs,tripeak+source],
+                                    [xs-dim[0]/2,tripeak+source],
+                                    [xs-dim[0]/2,tripeak+source+dim[1]+(k+1)*jjstep]],
                                     jjwidth,layer=self.layer_top)
             squid_right = cad.core.Path([[xs,tripeak-jjwidth/2],
-                                    [xs,tripeak+dim[1]],
-                                    [xs+dim[0]/2,tripeak+dim[1]],
-                                    [xs+dim[0]/2,tripeak+2*dim[1]+(k+1)*jjstep]],
+                                    [xs,tripeak+source],
+                                    [xs+dim[0]/2,tripeak+source],
+                                    [xs+dim[0]/2,tripeak+source+dim[1]+(k+1)*jjstep]],
                                     jjwidth, layer=self.layer_top)
             pad = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + padwidth + xs,self.y0 + padlength))
             tripoints = [[self.x0 + xs,self.y0 + padlength],
@@ -69,11 +75,11 @@ class SQUIDchip():
                 ll = self.layer_bottom
             else:
                 ll = self.layer_top
-                squid_hor = cad.core.Path([[xs-0.6*dim[0],tripeak+2*dim[1]+cwidth/2],
-                                    [xs+0.6*dim[0],tripeak+2*dim[1]+cwidth/2]],
+                squid_hor = cad.core.Path([[xs-0.6*dim[0],tripeak+source+dim[1]+cwidth/2],
+                                    [xs+0.6*dim[0],tripeak+source+dim[1]+cwidth/2]],
                                     cwidth,layer=self.layer_bottom)
-                squid_ver = cad.core.Path([[xs,tripeak+2*dim[1]+cwidth/2],
-                                    [xs,tripeak+100+dim[1]+cwidth/2]],
+                squid_ver = cad.core.Path([[xs,tripeak+source+dim[1]+cwidth/2],
+                                    [xs,tripeak+source+dim[1]+cwidth/2+drain]],
                                     cwidth,layer=self.layer_bottom)
             for toadd in [pad, tri, squid_ver, squid_hor]:
                 if toadd==pad or toadd==tri:

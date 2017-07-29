@@ -6,12 +6,12 @@ from source_dev.rfcavities_dcbias import ShuntCavity
 
 dict_pads = {'width': 200,
             'length': 300,
-            'spacing': 300,
+            'spacing': 100,
             'triheight': 100}
 
 dict_junctions = [{'width': 5,
                 'jjmin': 1,
-                'jjmax': 7,
+                'jjmax': 10,
                 'jjstep': 1},
                 {'width': 5,
                 'jjmin': 8,
@@ -73,12 +73,9 @@ for chipi,pos in zip([chipjj[1], chipsquid[1], chipcav],[(-3e3,-3e3),(-3e3,3e3),
     chip.add_component(chipi.cell,(pos[0]+1150,pos[1]))
 
 #Dicing marker for RF
-chip.add_dicing_marker(pos=(1150,0))
-chip.add_dicing_marker(pos=(11150,0),hor=False)
-chip.add_dicing_marker(pos=(0,10e3),vert=False)
-chip.add_dicing_marker(pos=(0,-10e3),vert=False)
-#Dicing marker for DC
-chip.add_dicing_marker(pos=(-4850,0),hor=False)
-chip.add_dicing_marker(pos=(-10850,0),hor=False)
+for pos in [(0,-10e3),(0,0),(0,10e3)]:
+    chip.add_dicing_marker(pos=pos,vert=False)
+for pos in [(-10850,0),(-4850,0),(1150,0),(11150,0)]:
+    chip.add_dicing_marker(pos=pos,hor=False)
 #chip.add_TUlogo()
 chip.save_to_gds(show = False, save = True)

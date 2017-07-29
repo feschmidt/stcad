@@ -37,22 +37,26 @@ class Junctionchip():
         jjmax = self.dict_junctions['jjmax']
         jjstep = self.dict_junctions['jjstep']
         jjlength = np.arange(jjmin,jjmax+1,jjstep)
+        amount = len(jjlength)
         
         cwidth = 20
-        centerpoints = [(0, tripeak - jjwidth / 2),
-                        (0, tripeak + 100 + cwidth / 2),
-                        (self.tlength, tripeak + 100 + cwidth / 2),
-                        (- self.tlength, tripeak + 100 + cwidth / 2)]
+        source = 200
+        centerpoints = [(0, tripeak - cwidth / 2),
+                        (0, tripeak + source + cwidth / 2),
+                        (self.tlength, tripeak + source + cwidth / 2),
+                        (- self.tlength, tripeak + source + cwidth / 2)]
         centerline = cad.core.Path(centerpoints, cwidth, layer = self.layer_bottom)
 
         self.padgroup = [cad.core.Cell('padgroup')] * 2
         self.padgroup[0].add(centerline)
 
-        for k,i in zip(jjlength,range(-3, 4)):
+        for k,i in zip(jjlength,range(-amount/2+1,amount/2+2)):
+            if i>=0:
+                k=k-1
             xs = (padwidth + padspace) * i
             junctionpoints = [(xs, tripeak - jjwidth / 2),
-                            (xs, tripeak + 100),
-                            (xs, tripeak + 100 + k)]
+                            (xs, tripeak + source),
+                            (xs, tripeak + source + k)]
             junction = cad.core.Path(junctionpoints, jjwidth, layer = self.layer_top)
             pad = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + padwidth + xs,self.y0 + padlength))
             tripoints = [[self.x0 + xs,self.y0 + padlength],

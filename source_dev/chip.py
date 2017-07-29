@@ -113,7 +113,7 @@ class Base_Chip():
         self.cell.add(marker)
 
 
-    def save_to_gds(self, loc = 'testing/', save = True, show = True):
+    def save_to_gds(self, loc = 'testing_scripts/', save = True, show = True):
         '''
         Save and show gds file
         Default location in testing/, can be adjusted via loc
@@ -166,8 +166,8 @@ class Base_Chip():
         Add rectangular dicing marks across the entire chip/wafer
         '''
         marker = cad.core.Cell('DICING')
-        hmarks0 = cad.shapes.Rectangle((-500,-125),(500,125))
-        vmarks0 = cad.shapes.Rectangle((-125,-500),(125,500))
+        hmarks0 = cad.shapes.Rectangle((0,-125),(1000,125))
+        vmarks0 = cad.shapes.Rectangle((-125,0),(125,1000))
         for xx,yy in zip(np.arange(-self.xdim/4,self.xdim/4+1,1000),np.arange(-self.ydim/4,self.ydim/4+1,1000)):
             if hor==True:
                 hmarks = cad.utils.translate(hmarks0, (2*xx+pos[0],pos[1]))
