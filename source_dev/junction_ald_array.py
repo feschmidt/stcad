@@ -4,8 +4,8 @@ import dc_24pin
 
 class Junctionchip():
 
-    def __init__(self, name, dict_pads, dict_junctions, x0 = -100, y0 = -2200, 
-        tlength = 1510):
+    def __init__(self, name, dict_pads, dict_junctions, x0 = -100, y0 = -1700, 
+        tlength = None):
         '''
         Class for ALD JJs. These are vertical tunnel barriers with a two-step process.
         '''
@@ -39,6 +39,9 @@ class Junctionchip():
         jjlength = np.arange(jjmin,jjmax+1,jjstep)
         amount = len(jjlength)
         
+        if self.tlength==None:
+            self.tlength = (padwidth+padspace)*(amount)/2-padwidth/2
+
         cwidth = 20
         source = 200
         centerpoints = [(0, tripeak - cwidth / 2),
@@ -58,6 +61,8 @@ class Junctionchip():
                             (xs, tripeak + source),
                             (xs, tripeak + source + k)]
             junction = cad.core.Path(junctionpoints, jjwidth, layer = self.layer_top)
+            junction_label = cad.shapes.LineLabel(k,200,(xs-padwidth/2,-2e3), layer=self.layer_top)
+
             pad = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + padwidth + xs,self.y0 + padlength))
             tripoints = [[self.x0 + xs,self.y0 + padlength],
                         [self.x0 + padwidth / 2. + xs,tripeak],
@@ -75,6 +80,7 @@ class Junctionchip():
 
             if i!=0:
                 self.padgroup[ll-1].add(junction)
+                self.padgroup[ll-1].add(junction_label)
 
         # Create full array by inputting bottom junction row into dc_24pin method gen_full_array
         self.cell = dc_24pin.gen_full_array(padgroup = self.padgroup)

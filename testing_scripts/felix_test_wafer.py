@@ -11,11 +11,11 @@ dict_pads = {'width': 200,
 
 dict_junctions = [{'width': 5,
                 'jjmin': 1,
-                'jjmax': 10,
+                'jjmax': 7,
                 'jjstep': 1},
                 {'width': 5,
-                'jjmin': 8,
-                'jjmax': 14,
+                'jjmin': 7,
+                'jjmax': 13,
                 'jjstep': 1}]
 
 dict_squids = [{'width': 5,
@@ -23,8 +23,8 @@ dict_squids = [{'width': 5,
                 'jjmax': 7,
                 'jjstep': 1},
                 {'width': 5,
-                'jjmin': 8,
-                'jjmax': 14,
+                'jjmin': 7,
+                'jjmax': 13,
                 'jjstep': 1}]
                 
 dict_cavity = {'length': 6900,
@@ -50,8 +50,8 @@ chipsquid = [Base_Chip(name_squid[0],xdim=6e3,ydim=6e3,frame=True), Base_Chip(na
 for i in range(2):
 	for chipi,group in zip([chipjj[i],chipsquid[i]],[jjs[i],squids[i]]):
 		chipi.add_component(group.cell,(0,0))
-		chipi.add_bond_testpads(pos=(-2.1e3,-2.1e3))
-		chipi.add_ebpg_marker((-2e3,-2e3))	
+		chipi.add_bond_testpads(pos=(-1.8e3,-1.8e3))
+		chipi.add_ebpg_marker((-2e3,-1.5e3))	
 		chipi.add_photolitho_marker()
 		chipi.add_photolitho_vernier()
 
