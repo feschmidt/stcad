@@ -36,7 +36,7 @@ first_qubit.gen_pattern()
 qubit_910nm = first_qubit.cell
 
 
-chip = Base_Chip('Dosetest Al coating chip',9000,9000)
-chip.add_component(qubit_100nm,(600,8000))
-chip.add_component(qubit_910nm,(730,8000))
-chip.save_to_gds(show=True, save= True)
+chip = Base_Chip('Dosetest Al coating chip',8000,8000)
+chip.add_component(qubit_100nm,(4000,7000))
+chip.add_component(qubit_910nm,(4300,7000))
+chip.save_to_gds(show=True, save= False)
