@@ -10,7 +10,7 @@ class Base_Chip():
     The reference position is the center of the chip, that is (0,0)
     Reserved layers: 20, 21, 22, 23
     Options for wafer:
-        False --> rectangular chip
+        False (Default) --> rectangular chip
         1 --> 1" wafer
         2 --> 2" wafer etc
     """

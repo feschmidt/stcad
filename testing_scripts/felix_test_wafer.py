@@ -36,16 +36,16 @@ dict_cavity = {'length': 6900,
             'holedim': (80,100),
             'holemarker': True}
                 
-
+smallchip = 5e3
 name_jj = ['JJ test 1...7um', 'JJ test 8...15um']
 jjs = [Junctionchip(name_jj[0],dict_pads,dict_junctions[0]), Junctionchip(name_jj[1],dict_pads,dict_junctions[1])]
 [jjs[i].gen_junctions() for i in range(2)]
-chipjj = [Base_Chip(name_jj[0],xdim=6e3,ydim=6e3,frame=True), Base_Chip(name_jj[1],xdim=6e3,ydim=6e3,frame=True)]
+chipjj = [Base_Chip(name_jj[0],xdim=smallchip,ydim=smallchip,frame=True), Base_Chip(name_jj[1],xdim=smallchip,ydim=smallchip,frame=True)]
 
 name_squid = ['JJ test 1...7um', 'JJ test 8...15um']
 squids = [SQUIDchip(name_squid[0],dict_pads,dict_squids[0]), SQUIDchip(name_squid[1],dict_pads,dict_squids[1])]
 [squids[i].gen_junctions() for i in range(2)]
-chipsquid = [Base_Chip(name_squid[0],xdim=6e3,ydim=6e3,frame=True), Base_Chip(name_squid[1],xdim=6e3,ydim=6e3,frame=True)]
+chipsquid = [Base_Chip(name_squid[0],xdim=smallchip,ydim=smallchip,frame=True), Base_Chip(name_squid[1],xdim=smallchip,ydim=smallchip,frame=True)]
 
 for i in range(2):
 	for chipi,group in zip([chipjj[i],chipsquid[i]],[jjs[i],squids[i]]):
@@ -67,15 +67,15 @@ chipcav.add_photolitho_vernier()
 
 # Add individual designs to big chip
 chip = Base_Chip('full_wafer',xdim=25000,ydim=25000,wafer=False)
-for chipi,pos in zip([chipjj[0], chipsquid[0], chipcav],[(-9e3,-3e3),(-9e3,3e3),(5e3,5e3)]):
-    chip.add_component(chipi.cell,(pos[0]+1150,pos[1]))
-for chipi,pos in zip([chipjj[1], chipsquid[1], chipcav],[(-3e3,-3e3),(-3e3,3e3),(5e3,-5e3)]):
-    chip.add_component(chipi.cell,(pos[0]+1150,pos[1]))
+for chipi,pos in zip([chipjj[0], chipsquid[0], chipcav],[(-7.5e3,-2.5e3),(-7.5e3,2.5e3),(5e3,5e3)]):
+    chip.add_component(chipi.cell,(pos[0]+0,pos[1]))
+for chipi,pos in zip([chipjj[1], chipsquid[1], chipcav],[(-2.5e3,-2.5e3),(-2.5e3,2.5e3),(5e3,-5e3)]):
+    chip.add_component(chipi.cell,(pos[0]+0,pos[1]))
 
 #Dicing marker for RF
 for pos in [(0,-10e3),(0,0),(0,10e3)]:
     chip.add_dicing_marker(pos=pos,vert=False)
-for pos in [(-10850,0),(-4850,0),(1150,0),(11150,0)]:
+for pos in [(-10e3,0),(-5e3,0),(0,0),(10e3,0)]:
     chip.add_dicing_marker(pos=pos,hor=False)
 #chip.add_TUlogo()
 chip.save_to_gds(show = False, save = True)
