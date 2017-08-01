@@ -2,9 +2,9 @@ import numpy as np
 import gdsCAD as cad
 
 class HangerCavity():
-    '''
+    """
     Class for RF cavity hangers inductively coupled to a transmission feedline
-    '''
+    """
     def __init__(self, name, dict_cavity):
 
         self.name = name
@@ -18,6 +18,7 @@ class HangerCavity():
         self.couplinglength = self.dict_cavity['couplinglength']
         self.centerwidth = self.dict_cavity['centerwidth']
         self.gapwidth = self.dict_cavity['gapwidth']
+        self.coupling = self.dict_cavity['coupling']    # inductive, capacitive
         
         self.launchx = -4.9e3
         self.launchy = 3.5e3
@@ -40,7 +41,7 @@ class HangerCavity():
         feedline_bottom = feedline[2]   # extract y-coordinate of bottom of feedline
         length0 = self.length
         for xx, length in enumerate([length0,length0-430,length0-830,length0-1.2e3]):
-            hanger = self.gen_hanger(length,(-3.3e3+xx*1.8e3,feedline_bottom))
+            hanger = self.gen_hanger(length,(-3.3e3+xx*1.8e3,feedline_bottom),coupling=self.coupling)
             for i in range(len(hanger)):
                 self.cell.add(hanger[i])
         
@@ -56,7 +57,6 @@ class HangerCavity():
         launchw = self.launchw
         launchpad = self.launchpad
         taperl = self.taperl
-        
         launchgap = 200
         
         if hor==True:
@@ -68,15 +68,30 @@ class HangerCavity():
                             (center_x+launchpad,center_y+launchw/2+launchgap),
                             (center_x-launchgap,center_y+launchw/2+launchgap),
                             (center_x-launchgap,center_y)]
-            launcher_top = cad.core.Boundary(launchpoints_top)
-            launcher_bot = cad.utils.reflect(launcher_top,'x',origin=(0,center_y))
-            launcher2_top = cad.utils.reflect(launcher_top,'y',origin=(0,0))
-            launcher2_bot = cad.utils.reflect(launcher_bot,'y',origin=(0,0))
-        
-        return (launcher_top,launcher_bot,launcher2_top,launcher2_bot)
+            axis = 'x'
+            origin = (0,center_y)
+
+        else:
+            launchpoints_top = [(center_y,-center_x),
+                            (center_y+launchw/2,-center_x),
+                            (center_y+launchw/2,-(center_x+launchpad)),
+                            (center_y+feedwidth/2,-(center_x+launchpad+taperl)),
+                            (center_y+feedwidth/2+gapwidth,-(center_x+launchpad+taperl)),
+                            (center_y+launchw/2+launchgap,-(center_x+launchpad)),
+                            (center_y+launchw/2+launchgap,-(center_x-launchgap)),
+                            (center_y,-(center_x-launchgap))]
+            axis = 'y'
+            origin =(center_y,0)
+
+        launcher1 = cad.core.Boundary(launchpoints_top)
+        launcher2 = cad.utils.reflect(launcher1,axis,origin=origin)
+        launcher3 = cad.utils.reflect(launcher1,'y',origin=(0,0))
+        launcher4 = cad.utils.reflect(launcher2,'y',origin=(0,0))
+
+        return(launcher1, launcher2, launcher3, launcher4)
         
     
-    def gen_feedline(self, feedwidth = 50, gapwidth = 25):
+    def gen_feedline(self, hor = True, feedwidth = 50, gapwidth = 25):
         """
         Generate feedline
         """
@@ -86,43 +101,58 @@ class HangerCavity():
         center_y = self.launchy
         launchpad = self.launchpad
         taperl = self.taperl
-            
-        feedpoints = [(center_x+launchpad+taperl,center_y+feedwidth/2+gapwidth),
-                    (-(center_x+launchpad+taperl),center_y+feedwidth/2+gapwidth),
-                    (-(center_x+launchpad+taperl),center_y+feedwidth/2),
-                    (center_x+launchpad+taperl,center_y+feedwidth/2)]
-        feedline1 = cad.core.Boundary(feedpoints)
-        feedline2 = cad.utils.reflect(feedline1,'x',origin=(0,center_y))
         
+        if hor==True:    
+            feedpoints = [(center_x+launchpad+taperl,center_y+feedwidth/2+gapwidth),
+                        (-(center_x+launchpad+taperl),center_y+feedwidth/2+gapwidth),
+                        (-(center_x+launchpad+taperl),center_y+feedwidth/2),
+                        (center_x+launchpad+taperl,center_y+feedwidth/2)]
+            feedline1 = cad.core.Boundary(feedpoints)
+            feedline2 = cad.utils.reflect(feedline1,'x',origin=(0,center_y))
+        else:
+            i=1
+            # TO FINISH
         return (feedline1,feedline2,center_y-feedwidth/2-gapwidth)
     
     
-    def gen_hanger(self, length, pos, couplinglength = 610, couplinggap = 10, centerwidth = 4, gapwidth = 20, radius = 100):
+    def gen_hanger(self, length, pos, coupling='capacitive', couplinglength = 610, couplinggap = 10, centerwidth = 4, gapwidth = 20, radius = 100):
         """
         Generate hanger of length=length at pos=(x0,y1) with inductive coupling
         """
         
-        print 'Generating hanger of length ' + str(length)
+        print 'Generating hanger of length ' + str(length) + ' with '+coupling+' coupling'
         x0 = pos[0]
         y0 = pos[1] - couplinggap
         radius_hanger = radius - gapwidth - centerwidth/2
         restlength = length - couplinglength - 2*np.pi*radius_hanger/4
          
-        hangerpoints_1 = [(x0,y0),
-                        (x0 + couplinglength,y0),
-                        (x0 + couplinglength,y0-gapwidth),
-                        (x0, y0-gapwidth)]
-        hangerpoints_2 = [(x0 + couplinglength + radius, y0 - radius),
-                        (x0+couplinglength+radius, y0-radius-restlength-gapwidth),
-                        (x0+couplinglength+radius-2*gapwidth-centerwidth,y0-radius-restlength-gapwidth),
-                        (x0+couplinglength+radius-2*gapwidth-centerwidth,y0-radius),
-                        (x0+couplinglength+radius-gapwidth-centerwidth,y0-radius),
-                        (x0+couplinglength+radius-gapwidth-centerwidth,y0-radius-restlength),
-                        (x0+couplinglength+radius-gapwidth,y0-radius-restlength),
-                        (x0+couplinglength+radius-gapwidth,y0-radius)]
+        if coupling == 'inductive':
+            hangerpoints_1 = [(x0,y0),
+                            (x0 + couplinglength,y0),
+                            (x0 + couplinglength,y0-gapwidth),
+                            (x0, y0-gapwidth)]
+            hangerpoints_2 = [(x0+couplinglength+radius, y0-radius),
+                            (x0+couplinglength+radius, y0-radius-restlength-gapwidth),
+                            (x0+couplinglength+radius-gapwidth-centerwidth/2,y0-radius-restlength-gapwidth),
+                            (x0+couplinglength+radius-gapwidth-centerwidth/2,y0-radius-restlength),
+                            (x0+couplinglength+radius-gapwidth,y0-radius-restlength),
+                            (x0+couplinglength+radius-gapwidth,y0-radius)]
+                            
+        if coupling == 'capacitive':
+            hangerpoints_1 = [(x0,y0),
+                            (x0 + couplinglength,y0),
+                            (x0 + couplinglength,y0-gapwidth),
+                            (x0 + gapwidth, y0-gapwidth),
+                            (x0 + gapwidth, y0-gapwidth-centerwidth/2),
+                            (x0, y0-gapwidth-centerwidth/2)]
+            hangerpoints_2 = [(x0+couplinglength+radius, y0-radius),
+                            (x0+couplinglength+radius, y0-radius-restlength-gapwidth),
+                            (x0+couplinglength+radius-gapwidth,y0-radius-restlength-gapwidth),
+                            (x0+couplinglength+radius-gapwidth,y0-radius)]
         hanger1 = cad.core.Boundary(hangerpoints_1)
         hanger2 = cad.core.Boundary(hangerpoints_2)
         hanger3 = cad.utils.reflect(hanger1,'x',origin=(0,y0-gapwidth-centerwidth/2))
+        hanger4 = cad.utils.reflect(hanger2,'y',origin=(x0+couplinglength+radius-gapwidth-centerwidth/2,0))
         
         radius1 = radius                
         curve1 = cad.shapes.Disk((x0+couplinglength,y0-radius1), radius=radius, inner_radius=radius1-gapwidth, initial_angle=90,final_angle=0)
@@ -130,7 +160,7 @@ class HangerCavity():
         radius2 = radius-gapwidth-centerwidth
         curve2 = cad.shapes.Disk((x0+couplinglength,y0-gapwidth-centerwidth-radius2), radius=radius2, inner_radius=radius2-gapwidth, initial_angle=90,final_angle=0)
             
-        return (hanger1,hanger2,hanger3,curve1,curve2)
+        return (hanger1,hanger2,hanger3,hanger4,curve1,curve2)
         
     '''
         

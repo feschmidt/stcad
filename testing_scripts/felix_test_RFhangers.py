@@ -8,7 +8,8 @@ import source_dev.rfcavities_hangers as cavities
 dict_hangers = {'length': 4000,
             'couplinglength': 600,
             'centerwidth': 4,
-            'gapwidth': 20}
+            'gapwidth': 20,
+            'coupling': 'inductive'}
                 
 
 name = 'hangers'
