@@ -52,7 +52,7 @@ class Base_Chip():
         # The label is added 100 um on top of the main cell
         label_grid_chip = cad.shapes.LineLabel( self.name + "  " +\
                                          date,self.boxwidth,
-                                         (0,self.ydim/2 - 2*self.boxwidth),
+                                         (-200,self.ydim/2 - 2*self.boxwidth-700),
                                          layer=self.layer_label)
 
 
