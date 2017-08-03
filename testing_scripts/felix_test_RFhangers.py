@@ -15,6 +15,7 @@ dict_hangers = {'length': 4000,
 name = 'hangers'
 rfhangers = cavities.HangerCavity(name,dict_hangers)
 rfhangers.gen_full()
+cad.core.sub(rfhangers,rfhangers)
 
 chipsize = 10e3
 chip = Base_Chip(name,chipsize,chipsize)

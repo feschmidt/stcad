@@ -42,9 +42,9 @@ class Base_Chip():
 
 
     def make_layout(self):
-        '''
+        """
         Generate chip with dimensions xdim,ydim
-        '''
+        """
         box=cad.shapes.Box((-self.xdim/2, -self.ydim/2), (self.xdim/2, self.ydim/2),
                          width=self.boxwidth, layer =self.layer_box)
 
@@ -61,9 +61,9 @@ class Base_Chip():
         
         
     def make_wafer(self,wafer_r):
-        '''
+        """
         Generate wafer with primary flat on the left. From https://coresix.com/products/wafers/ I estimated that the angle defining the wafer flat to arctan(flat/2 / radius)
-        '''
+        """
         angled = 18
         angle = angled*np.pi/180
         circ = cad.shapes.Circle((0,0), wafer_r, width=self.boxwidth, initial_angle=180+angled, final_angle=360+180-angled, layer=self.layer_box)
@@ -96,10 +96,10 @@ class Base_Chip():
 
     
     def add_ebpg_marker(self, pos=(-3310,-1560), size=20, spacing=200):
-        '''
+        """
         4 ebeam marker each 20um rectangular and 200um spaced apart
         params pos : tuple of positions
-        '''
+        """
         marker = [cad.core.Cell('EBEAM')] * 4
         x = [pos[0], pos[0] + spacing, pos[0] + spacing, pos[0]]
         y = [pos[1], pos[1], pos[1] + spacing, pos[1] + spacing]
@@ -114,10 +114,10 @@ class Base_Chip():
 
 
     def save_to_gds(self, loc = 'testing_scripts/', save = True, show = True):
-        '''
+        """
         Save and show gds file
         Default location in testing/, can be adjusted via loc
-        '''
+        """
         layout = cad.core.Layout('MAIN_CHIP')
         layout.add(self.cell)
         if save:
@@ -127,9 +127,9 @@ class Base_Chip():
 
 
     def add_bond_testpads(self, pos=(-2000,-2000), dim=(300,300), num=4):
-        '''
+        """
         value(num) bonding pads with dimension dim (tuple) at position pos (tuple)
-        '''
+        """
         pads = cad.core.Cell('TESTPADS')
         x = [pos[0], -pos[0], -pos[0], pos[0]]
         y = [pos[1], pos[1], -pos[1], -pos[1]]
@@ -140,9 +140,9 @@ class Base_Chip():
 
 
     def add_photolitho_marker(self, pos=(0,0)):
-        '''
+        """
         Add alignment marker for photolithography
-        '''
+        """
         marker = cad.core.Cell('PHOTO')
         amarks0 = cad.templates.AlignmentMarks(('A','C'),(1,2))
         amarks = cad.core.CellReference(amarks0).translate(pos)
@@ -151,9 +151,9 @@ class Base_Chip():
     
     
     def add_photolitho_vernier(self, pos=(-500,-500)):
-        '''
+        """
         Add vernier structures for determining alignment precision
-        '''
+        """
         verniers = cad.core.Cell('VERNIER')
         vmarks0 = cad.templates.Verniers(('A','B'),(1,2))
         vmarks = cad.core.CellReference(vmarks0).translate(pos)
@@ -161,28 +161,39 @@ class Base_Chip():
         self.cell.add(verniers)
         
         
-    def add_dicing_marker(self, pos=(0,0), hor=True, vert=True):
-        '''
+    def add_dicing_marker(self, pos=(0,0), hor=True, vert=True, span=False, length=1000):
+        """
         Add rectangular dicing marks across the entire chip/wafer
-        '''
+        """
         marker = cad.core.Cell('DICING')
-        hmarks0 = cad.shapes.Rectangle((0,-125),(1000,125))
-        vmarks0 = cad.shapes.Rectangle((-125,0),(125,1000))
-        for xx,yy in zip(np.arange(-self.xdim/4,self.xdim/4+1,1000),np.arange(-self.ydim/4,self.ydim/4+1,1000)):
+        hmarks0 = cad.shapes.Rectangle((0,-125),(length,125))
+        vmarks0 = cad.shapes.Rectangle((-125,0),(125,length))
+        if span==False:
+            x0 = -self.xdim/4
+            x1 = -x0 + 1
+            y0 = -self.ydim/4
+            y1 = -y0 + 1
+        else:
+            x0 = span[0][0]/4
+            x1 = span[0][1]/4
+            y0 = span[1][0]/4
+            y1 = span[1][1]/4
+        for xx,yy in zip(np.arange(x0,x1,length),np.arange(y0,y1,length)):
             if hor==True:
                 hmarks = cad.utils.translate(hmarks0, (2*xx+pos[0],pos[1]))
                 marker.add(hmarks)
             if vert==True:
                 vmarks = cad.utils.translate(vmarks0, (pos[0],2*yy+pos[1]))
                 marker.add(vmarks)
+
         self.cell.add(marker)
                 
     
-    '''
+    """
     # Disabled for now since issue with dxfImport    
     def add_TUlogo(self, pos=(0,100)):
         # logo is added 100um below bottom edge of chip
         logo = cad.core.DxfImport('examples/TU_Delft_logo_Black.dxf',scale=1.0)
         logo.layer=self.layer_label
         self.cell.add(logo)
-    '''
+    """
