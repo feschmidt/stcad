@@ -5,9 +5,8 @@ import source_dev.transmon as transmon
 
 dict_pads = {'width': 600,
              'height': 250,
-             'lead_width': 3,
-             'lead_height': 5,
-             'fork_depth': 0.5,
+             'lead_width': 10,
+             'lead_height': 20,
              'rounded_edges': True,
              'layer': 1}
 
@@ -16,10 +15,12 @@ dict_pads = {'width': 600,
 
 # Note that overlap cannot be negative!!!!!
 w_dolan_bridge = 0.12
-appr_overlap = (2 * (700 - 45) * np.tan(35 * np.pi / 180) -
+appr_overlap = (2 * (320 - 45) * np.tan(35 * np.pi / 180) -
                 w_dolan_bridge * 1e3) / 1e3 + 0.1
+
+print appr_overlap
 dict_junctions = {'bjunction_width': 2,
-                  'bjunction_height': 4,
+                  'bjunction_height':10,
                   'junction_width': 0.1,
                   'junction_height': 1,
                   'w_dolan_bridge': w_dolan_bridge,
