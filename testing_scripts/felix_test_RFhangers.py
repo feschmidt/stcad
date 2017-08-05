@@ -1,25 +1,34 @@
 import numpy as np
-import gdsCAD as cad
 from source_dev.chip import Base_Chip
-import source_dev.junction_ald_array as junction_array
-import source_dev.squid_ald_array as squid_array
-import source_dev.rfcavities_hangers as cavities
+import source_dev.rf_feedlines as feedline
 
-dict_hangers = {'length': 4000,
-            'couplinglength': 600,
-            'centerwidth': 4,
-            'gapwidth': 20,
-            'coupling': 'inductive'}
-                
+dict_feedline = {'length': 7000,
+                'feedwidth': 50,
+                'gapwidth': 30,
+                'curved': False,
+                'orientation': 'up',
+                'layer':1}
 
-name = 'hangers'
-rfhangers = cavities.HangerCavity(name,dict_hangers)
-rfhangers.gen_full()
 
-chipsize = 10e3
-chip = Base_Chip(name,chipsize,chipsize)
-chip.add_component(rfhangers.cell,(0,0))
-chip.add_ebpg_marker((-3.3e3,-1.5e3))
-#chip.add_TUlogo()
-chip.save_to_gds(show = True, save = True)
+name = 'Feedlines'
+rffeedline = feedline.Feedline(name, dict_feedline)
+rf_feed_hor = rffeedline.gen_feedline()
 
+rffeedline.curved = True
+rffeedline.orientation = 'down'
+ref_feed_curved_down =  rffeedline.gen_feedline()
+
+rffeedline.orientation = 'up'
+ref_feed_curved_up =  rffeedline.gen_feedline()
+
+
+chipsize = 9e3
+chip = Base_Chip(name, chipsize, chipsize)
+chip.add_component(rf_feed_hor, (0,0))
+chip.add_component(ref_feed_curved_down,(0,-3e3))
+chip.add_component(ref_feed_curved_up,(0,3e3))
+
+
+chip.add_ebpg_marker((-3.3e3, -1.5e3))
+# chip.add_TUlogo()
+chip.save_to_gds(show=True, save=False)
