@@ -5,7 +5,7 @@ import source_dev.utilities as utils
 
 class Feedline():
     """
-    Class for RF cavity hangers inductively coupled to a transmission feedline
+    Class for RF transmission feedline
     """
 
     def __init__(self, name, dict_feedline):
