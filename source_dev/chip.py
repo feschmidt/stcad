@@ -1,6 +1,7 @@
 import numpy as np
 import gdsCAD as cad
 import time
+import gdspy
 
 
 class Base_Chip():
@@ -188,7 +189,20 @@ class Base_Chip():
 
         self.cell.add(marker)
                 
-    
+    def chip_not(self):
+        """
+        Negate everything on this chip
+        """
+        #n_box = cad.core.Cell('NOT')
+        #not_box = cad.core.CellReference(n_box)
+        box = gdspy.Rectangle((-self.xdim/2, -self.ydim/2), (self.xdim/2, self.ydim/2))
+        #not_box.add(box)
+        original = cad.core.CellReference(self.cell)
+        not_chip = gdspy.fast_boolean(box, original, 'not')
+        result_cell = gdspy.Cell('NOT_CELL')
+        result_cell.add(not_chip)
+        self.cell = result_cell
+
     """
     # Disabled for now since issue with dxfImport    
     def add_TUlogo(self, pos=(0,100)):

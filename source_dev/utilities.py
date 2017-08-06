@@ -2,12 +2,12 @@ import gdsCAD as cad
 import shapely
 import numpy as np
 import collections
-
+import gdspy
 
 
 def make_rounded_edges(rectangle, radius, dict_corners):
 	
-	'''
+	"""
 	Rectangle: is a gdscad object (rectangle)
 	layer : layer to place the object in
 	list_corners: [BL,BR,TR,TL] order is important
@@ -17,7 +17,7 @@ def make_rounded_edges(rectangle, radius, dict_corners):
 
 	This function returns an object with rounded corners
 
-	'''
+	"""
 
 	original_layer = rectangle.layer
 	corners = rectangle.bounding_box
@@ -82,9 +82,9 @@ def mask_disk(radius):
 	return quarter_disk
 
 def shapely_to_poly(shapely_Polygon):
-	'''
+	"""
 	converts a shapely polygon to a gdsCAD Boundary.
-	'''
+	"""
 	pol_type = shapely_Polygon.geom_type
 	if pol_type != 'Polygon':
 		raise ValueError('Shapely to Polygon > Input is not a polygon!')
@@ -96,9 +96,9 @@ def shapely_to_poly(shapely_Polygon):
 	return polygon
 
 def poly_to_shapely(polygon):
-	'''
+	"""
 	converts a polygon or Boundary to a shapely polygon
-	'''
+	"""
 	points = polygon.points
 	shapely_polygon = shapely.geometry.Polygon(points)
 
@@ -106,13 +106,13 @@ def poly_to_shapely(polygon):
 
 def join_polygons(polygon1,
                   polygon2,format_shapely=False):
-    '''
+    """
     Inputs are:
         polygon1, polygon
         polygon2, polygon
     joining two polygons. Works better if there is overlap.
     Returns polygon = polygon1 U polygon2
-    '''
+    """
     if format_shapely == False:
     	shapely_polygon1 = poly_to_shapely(polygon1)
     	shapely_polygon2 = poly_to_shapely(polygon2)
@@ -130,14 +130,14 @@ def join_polygons(polygon1,
     return out
 
 def correct_for_multipol(pol):
-    '''
+    """
     Inputs are:
         pol, Suspected Multipolygon
     Takes the main polygon of a multipolygon.
 
     Typically used to solve the problem of non-overlapping polygons being substracted.
 
-    '''
+    """
     pol_type = pol.geom_type
     if pol_type == 'MultiPolygon':
         area = np.zeros(len(pol.geoms))
@@ -146,4 +146,3 @@ def correct_for_multipol(pol):
         max_area_id = np.argmax(area)
         pol = pol.geoms[max_area_id]
     return pol
-
