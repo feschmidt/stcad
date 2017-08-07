@@ -32,7 +32,7 @@ dict_hangers2['coupling'] = 'capacitive'
 
 rfhangers = hangers.RFHangers('Hangers', dict_hangers)
 rf_hangers = rfhangers.gen_full()
-rfhangers2 = hangers.RFHangers('Hangers', dict_hangers2)
+rfhangers2 = hangers.RFHangers('Hangers', dict_hangers2, squid=True)
 rf_hangers2 = rfhangers2.gen_full()
 
 chipsize = 10e3
@@ -41,9 +41,6 @@ chip.add_component(rf_feed_hor, (0,3.5e3))
 chip.add_component(rf_feed_hor, (0,-3.5e3))
 chip.add_component(rf_hangers, (0,0))
 chip.add_component(rf_hangers2, (0,0))
-
-
 chip.add_ebpg_marker((-3.3e3, -1.5e3))
-chip.chip_not()
-# chip.add_TUlogo()
+
 chip.save_to_gds(show=True, save=False)

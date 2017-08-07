@@ -12,9 +12,10 @@ class RFHangers():
         - centerwidth = 4
         - gapwidth = 20
         - radius = 100
+        - squid = False, i.e. no squid at the end. Can be set to true
     """
 
-    def __init__(self, name, dict_hangers):
+    def __init__(self, name, dict_hangers, squid = False):
 
         self.name = name
         self.dict_hangers = dict_hangers
@@ -26,6 +27,12 @@ class RFHangers():
         self.centerwidth = self.dict_hangers['centerwidth']
         self.gapwidth = self.dict_hangers['gapwidth']
         self.orientation = self.dict_hangers['orientation']
+
+        self.layer_bottom = 1
+        self.layer_top = 2
+
+        # Option to add squid at the end
+        self.squid = squid
 
         # hard coded values
         self.radius = 100
@@ -47,7 +54,7 @@ class RFHangers():
         lengthvals = [length, length - 430, length - 830, length - 1.2e3]
 
         for xx, value in enumerate(lengthvals):
-            hanger = self.gen_hanger(value,(x0+xx*spacing,y0))
+            hanger = self.gen_hanger(value,(x0+xx*spacing,y0),self.squid)
         
             if self.orientation == 'left':
                 rot_cell = cad.core.CellReference(hanger,rotation = -90)
@@ -64,7 +71,7 @@ class RFHangers():
         return self.cell
 
 
-    def gen_hanger(self, length, pos):
+    def gen_hanger(self, length, pos, squid):
         """
         Generate hanger of length=length at pos=(x0,y1)
         Initial values:
@@ -84,7 +91,7 @@ class RFHangers():
         radius = self.radius
 
         print 'Generating hanger of length ' + str(length) + ' with '+coupling+' coupling'
-        
+
         self.hanger_cell = cad.core.Cell('RF_HANGER')
         
         x0 = pos[0]
@@ -111,10 +118,36 @@ class RFHangers():
                             (x0 + gapwidth, y0-gapwidth),
                             (x0 + gapwidth, y0-gapwidth-centerwidth/2),
                             (x0, y0-gapwidth-centerwidth/2)]
-            hangerpoints_2 = [(x0+couplinglength+radius, y0-radius),
-                            (x0+couplinglength+radius, y0-radius-restlength-gapwidth),
-                            (x0+couplinglength+radius-gapwidth,y0-radius-restlength-gapwidth),
+            if squid==False:
+                hangerpoints_2 = [(x0+couplinglength+radius, y0-radius),
+                                (x0+couplinglength+radius, y0-radius-restlength-gapwidth),
+                                (x0+couplinglength+radius-gapwidth,y0-radius-restlength-gapwidth),
+                                (x0+couplinglength+radius-gapwidth,y0-radius)]
+            else:
+                print 'Adding SQUID'
+                hangerpoints_2 = [(x0+couplinglength+radius, y0-radius),
+                            (x0+couplinglength+radius, y0-radius-restlength),
+                            (x0+couplinglength+radius+50, y0-radius-restlength),
+                            (x0+couplinglength+radius+50, y0-radius-restlength-gapwidth-100),
+                            (x0+couplinglength+radius-gapwidth-centerwidth/2,y0-radius-restlength-gapwidth-100),
+                            (x0+couplinglength+radius-gapwidth-centerwidth/2,y0-radius-restlength-gapwidth),
+                            (x0+couplinglength+radius-gapwidth+25-centerwidth,y0-radius-restlength-gapwidth),
+                            (x0+couplinglength+radius-gapwidth+25-centerwidth,y0-radius-restlength-gapwidth-50),
+                            (x0+couplinglength+radius-gapwidth+25,y0-radius-restlength-gapwidth-50),
+                            (x0+couplinglength+radius-gapwidth+25,y0-radius-restlength-gapwidth+centerwidth),
+                            (x0+couplinglength+radius-gapwidth,y0-radius-restlength-gapwidth+centerwidth),
                             (x0+couplinglength+radius-gapwidth,y0-radius)]
+                hangerpoints_squid_top = [(x0+couplinglength+radius-gapwidth-centerwidth/2,y0-radius-restlength-gapwidth-100-100),
+                            (x0+couplinglength+radius-gapwidth-centerwidth/2,y0-radius-restlength-gapwidth-49),
+                            (x0+couplinglength+radius-gapwidth-centerwidth/2+28,y0-radius-restlength-gapwidth-49),
+                            (x0+couplinglength+radius-gapwidth-centerwidth/2+28,y0-radius-restlength-gapwidth-49-centerwidth),
+                            (x0+couplinglength+radius-gapwidth,y0-radius-restlength-gapwidth-49-centerwidth),
+                            (x0+couplinglength+radius-gapwidth,y0-radius-restlength-gapwidth-100),
+                            (x0+couplinglength+radius+50,y0-radius-restlength-gapwidth-100),
+                            (x0+couplinglength+radius+50,y0-radius-restlength-gapwidth-100-100)]
+                hanger_squid_top1 = cad.core.Boundary(hangerpoints_squid_top,layer=self.layer_top)
+                hanger_squid_top2 = cad.utils.reflect(hanger_squid_top1,'y',origin=(x0+couplinglength+radius-gapwidth-centerwidth/2,0))
+
         hanger1 = cad.core.Boundary(hangerpoints_1)
         hanger2 = cad.core.Boundary(hangerpoints_2)
         hanger3 = cad.utils.reflect(hanger1,'x',origin=(0,y0-gapwidth-centerwidth/2))
@@ -125,8 +158,12 @@ class RFHangers():
         
         radius2 = radius-gapwidth-centerwidth
         curve2 = cad.shapes.Disk((x0+couplinglength,y0-gapwidth-centerwidth-radius2), radius=radius2, inner_radius=radius2-gapwidth, initial_angle=90,final_angle=0)
-            
-        for toadd in [hanger1,hanger2,hanger3,hanger4,curve1,curve2]:
+        
+        if squid==False:
+            addto = [hanger1,hanger2,hanger3,hanger4,curve1,curve2]
+        else:
+            addto = [hanger1,hanger2,hanger3,hanger4,curve1,curve2,hanger_squid_top1,hanger_squid_top2]    
+        for toadd in addto:
             self.hanger_cell.add(toadd)
 
         return self.hanger_cell

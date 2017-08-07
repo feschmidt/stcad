@@ -3,7 +3,8 @@ from source_dev.chip import Base_Chip
 from source_dev.junction_ald_array import Junctionchip
 from source_dev.squid_ald_array import SQUIDchip
 from source_dev.rfcavities_dcbias import ShuntCavity
-from source_dev.rfcavities_hangers import HangerCavity
+import source_dev.rf_feedlines as feedline
+import source_dev.rf_hangers as hangers
 
 ### Define DC part
 dict_pads = {'width': 200,
@@ -69,22 +70,45 @@ chipcav.add_photolitho_marker()
 chipcav.add_photolitho_vernier()
 
 
-### Define hanger cavity part
+######### Initialize chip with launchers and feedline
+dict_feedline = {'length': 8000,
+                'feedwidth': 50,
+                'gapwidth': 30,
+                'curved': False,
+                'orientation': 'up',
+                'layer':1}
+
+
+name = 'Feedlines'
+rffeedline = feedline.Feedline(name, dict_feedline)
+rf_feed_hor = rffeedline.gen_feedline()
+
+
+####### Add RF hangers
 dict_hangers = {'length': 4000,
             'couplinglength': 600,
+            'couplinggap': 10,
             'centerwidth': 4,
             'gapwidth': 20,
-            'coupling': 'inductive'}
-                            
-name_hang = 'Hanger cavity'
-rfhangers = HangerCavity(name_hang,dict_hangers)
-rfhangers.gen_full()
+            'coupling': 'inductive',
+            'orientation': 'up',
+            'position': [-3.3e3,3440]}
+dict_hangers2 = dict_hangers.copy()
+dict_hangers2['orientation'] = 'down'
+dict_hangers2['coupling'] = 'capacitive'
 
-chiphang = Base_Chip(name_hang,xdim=10e3,ydim=10e3,frame=True)
-chiphang.add_component(rfhangers.cell,(0,0))
-chiphang.add_ebpg_marker((-3.3e3,-1.5e3))
-chiphang.add_photolitho_marker()
-chiphang.add_photolitho_vernier()
+rfhangers = hangers.RFHangers('Hangers', dict_hangers)
+rf_hangers = rfhangers.gen_full()
+rfhangers2 = hangers.RFHangers('Hangers', dict_hangers2, squid=True)
+rf_hangers2 = rfhangers2.gen_full()
+
+chipsize = 10e3
+chiphang = Base_Chip('RF HANGERS', chipsize, chipsize)
+chiphang.add_component(rf_feed_hor, (0,3.5e3))
+chiphang.add_component(rf_feed_hor, (0,-3.5e3))
+chiphang.add_component(rf_hangers, (0,0))
+chiphang.add_component(rf_hangers2, (0,0))
+chiphang.add_ebpg_marker((-3.3e3, -1.5e3))
 
 
 

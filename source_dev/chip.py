@@ -188,9 +188,10 @@ class Base_Chip():
                 marker.add(vmarks)
 
         self.cell.add(marker)
-                
+    '''           
     def chip_not(self):
         """
+        *** BROKEN
         Negate everything on this chip
         """
         #n_box = cad.core.Cell('NOT')
@@ -202,12 +203,15 @@ class Base_Chip():
         result_cell = gdspy.Cell('NOT_CELL')
         result_cell.add(not_chip)
         self.cell = result_cell
-
-    """
-    # Disabled for now since issue with dxfImport    
+    '''
+    '''    
     def add_TUlogo(self, pos=(0,100)):
+        """
+        *** BROKEN
+        Issue with dxfImport
+        """
         # logo is added 100um below bottom edge of chip
         logo = cad.core.DxfImport('examples/TU_Delft_logo_Black.dxf',scale=1.0)
         logo.layer=self.layer_label
         self.cell.add(logo)
-    """
+    '''
