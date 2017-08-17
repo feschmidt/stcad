@@ -2,7 +2,7 @@ import gdsCAD as cad
 import shapely
 import numpy as np
 import collections
-import gdspy
+#import gdspy
 
 
 def make_rounded_edges(rectangle, radius, dict_corners):

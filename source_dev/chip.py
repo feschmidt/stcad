@@ -1,7 +1,7 @@
 import numpy as np
 import gdsCAD as cad
 import time
-import gdspy
+#import gdspy
 
 
 class Base_Chip():
@@ -96,21 +96,24 @@ class Base_Chip():
         self.cell.add(cell_obj,origin=pos)
 
     
-    def add_ebpg_marker(self, pos=(-3310,-1560), size=20, spacing=200):
+    def add_ebpg_marker(self, pos=(-3310,-1560), size=20, spacing=200, number=4, duplicate=True):
         """
         4 ebeam marker each 20um rectangular and 200um spaced apart
         params pos : tuple of positions
+        number: How many markers (up to four)
+        duplicate: set of four groups or just one at this position
         """
         marker = [cad.core.Cell('EBEAM')] * 4
         x = [pos[0], pos[0] + spacing, pos[0] + spacing, pos[0]]
         y = [pos[1], pos[1], pos[1] + spacing, pos[1] + spacing]
-        for i in range(4):
+        for i in range(number):
             box = cad.shapes.Rectangle((x[i]-size/2,y[i]-size/2),(x[i]+size/2,y[i]+size/2),
                                         layer = self.layer_alignment)
             marker[0].add(box)
-        marker[1] = cad.core.CellReference(marker[0], origin=(-2*pos[0]-spacing,-2*pos[1]-spacing))
-        marker[2] = cad.core.CellReference(marker[0], origin=(0,-2*pos[1]-spacing))
-        marker[3] = cad.core.CellReference(marker[0], origin=(-2*pos[0]-spacing,0))
+        if duplicate==True:
+            marker[1] = cad.core.CellReference(marker[0], origin=(-2*pos[0]-spacing,-2*pos[1]-spacing))
+            marker[2] = cad.core.CellReference(marker[0], origin=(0,-2*pos[1]-spacing))
+            marker[3] = cad.core.CellReference(marker[0], origin=(-2*pos[0]-spacing,0))
         self.cell.add(marker)
 
 

@@ -8,7 +8,7 @@ class Feedline():
     Class for RF transmission feedline
     """
 
-    def __init__(self, name, dict_feedline):
+    def __init__(self, name, dict_feedline, feedline=True):
 
         self.name = name
         self.dict_feedline = dict_feedline
@@ -21,7 +21,9 @@ class Feedline():
         self.curved = self.dict_feedline['curved']
         self.orientation = self.dict_feedline['orientation']
         self.layer = self.dict_feedline['layer']
-
+        
+        self.feedline = feedline    # additional option to omit feedlines if set to False
+            
         # hard coded parameters of the feedline
         self.lf_spacing = 0.5e3
         self.launchw = 0.5e3
@@ -47,7 +49,8 @@ class Feedline():
             launcher1 = self.put_launcher((-self.lfeedline / 2., 0), 'right')
             launcher2 = self.put_launcher((self.lfeedline / 2., 0), 'left')
 
-        self.cell.add(feedline_cpw)
+        if self.feedline:
+            self.cell.add(feedline_cpw)
         self.cell.add(launcher1)
         self.cell.add(launcher2)
 

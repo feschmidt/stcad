@@ -109,6 +109,8 @@ chiphang.add_component(rf_feed_hor, (0,-3.5e3))
 chiphang.add_component(rf_hangers, (0,0))
 chiphang.add_component(rf_hangers2, (0,0))
 chiphang.add_ebpg_marker((-3.3e3, -1.5e3))
+chiphang.add_photolitho_marker()
+chiphang.add_photolitho_vernier()
 
 
 
