@@ -14,8 +14,10 @@ class Base_Chip():
         False (Default) --> rectangular chip
         1 --> 1" wafer
         2 --> 2" wafer etc
+    Options for label location: By default slightly to the right of x=0 and 700um below upper edge. Can be adjusted by labelloc=(xpos,ypos)
+    Options for label linewidth: labelwidth=5 by default
     """
-    def __init__(self, name, xdim=1000, ydim=1000, frame=True, wafer=False):
+    def __init__(self, name, xdim=1000, ydim=1000, frame=True, wafer=False, labelloc=(0,0), labelwidth=5):
         
         self.name = name
         self.xdim = xdim
@@ -37,12 +39,14 @@ class Base_Chip():
         self.cell = cad.core.Cell(name)
         if frame==True:
             if wafer==False:
-                self.make_layout()
+                if labelloc==(0,0):
+                    labelloc=(-200.,self.ydim/2. - 2*self.boxwidth-700.)
+                self.make_layout(labelloc,labelwidth)
             else:
-                self.make_wafer(wafer_d[wafer]/2)
+                self.make_wafer(wafer_d[wafer]/2,labelloc,labelwidth)
 
 
-    def make_layout(self):
+    def make_layout(self,labelloc,labelwidth):
         """
         Generate chip with dimensions xdim,ydim
         """
@@ -53,7 +57,8 @@ class Base_Chip():
         # The label is added 100 um on top of the main cell
         label_grid_chip = cad.shapes.LineLabel( self.name + "  " +\
                                          date,self.boxwidth,
-                                         (-200,self.ydim/2 - 2*self.boxwidth-700),
+                                         position=labelloc,
+                                         line_width=labelwidth,
                                          layer=self.layer_label)
 
 
@@ -61,7 +66,7 @@ class Base_Chip():
         self.cell.add(label_grid_chip)
         
         
-    def make_wafer(self,wafer_r):
+    def make_wafer(self,wafer_r,labelloc,labelwidth):
         """
         Generate wafer with primary flat on the left. From https://coresix.com/products/wafers/ I estimated that the angle defining the wafer flat to arctan(flat/2 / radius)
         """
@@ -71,9 +76,12 @@ class Base_Chip():
         flat = cad.core.Path([(-wafer_r*np.cos(angle),wafer_r*np.sin(angle)),(-wafer_r*np.cos(angle),-wafer_r*np.sin(angle))], width=self.boxwidth, layer=self.layer_box)
 
         date = time.strftime("%d/%m/%Y")
+        if labelloc==(0,0):
+                    labelloc=(-2e3,wafer_r-1e3)
         # The label is added 100 um on top of the main cell
         label_grid_chip = cad.shapes.LineLabel( self.name + "  " +\
-                                         date,500,(-2e3,wafer_r-1e3),
+                                         date,500,position=labelloc,
+                                         line_width=labelwidth,
                                          layer=self.layer_label)
 
 
@@ -143,23 +151,23 @@ class Base_Chip():
         self.cell.add(pads)
 
 
-    def add_photolitho_marker(self, pos=(0,0)):
+    def add_photolitho_marker(self, pos=(0,0), layer=(1,2)):
         """
         Add alignment marker for photolithography
         """
         marker = cad.core.Cell('PHOTO')
-        amarks0 = cad.templates.AlignmentMarks(('A','C'),(1,2))
+        amarks0 = cad.templates.AlignmentMarks(('A','C'),layer)
         amarks = cad.core.CellReference(amarks0).translate(pos)
         marker.add(amarks)
         self.cell.add(amarks)
     
     
-    def add_photolitho_vernier(self, pos=(-500,-500)):
+    def add_photolitho_vernier(self, pos=(-500,-500), layer=(1,2)):
         """
         Add vernier structures for determining alignment precision
         """
         verniers = cad.core.Cell('VERNIER')
-        vmarks0 = cad.templates.Verniers(('A','B'),(1,2))
+        vmarks0 = cad.templates.Verniers(('A','B'),layer)
         vmarks = cad.core.CellReference(vmarks0).translate(pos)
         verniers.add(vmarks)
         self.cell.add(verniers)

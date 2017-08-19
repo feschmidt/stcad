@@ -40,7 +40,7 @@ chipsquid.add_bond_testpads()
 chipsquid.add_ebpg_marker()
 
 
-chip = Base_Chip('testchip',xdim=25000,ydim=25000,wafer=2)
+chip = Base_Chip('felix_test_DC',xdim=25000,ydim=25000,wafer=2)
 chip.add_component(chipjj.cell,(-6e3,-6e3))
 chip.add_component(chipsquid.cell,(6e3,6e3))
 
