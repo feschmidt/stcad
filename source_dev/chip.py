@@ -17,7 +17,7 @@ class Base_Chip():
     Options for label location: By default slightly to the right of x=0 and 700um below upper edge. Can be adjusted by labelloc=(xpos,ypos)
     Options for label linewidth: labelwidth=5 by default
     """
-    def __init__(self, name, xdim=1000, ydim=1000, frame=True, wafer=False, labelloc=(0,0), labelwidth=5):
+    def __init__(self, name, xdim=1000, ydim=1000, frame=True, label=True, wafer=False, labelloc=(0,0), labelwidth=5):
         
         self.name = name
         self.xdim = xdim
@@ -37,16 +37,16 @@ class Base_Chip():
         self.layer_testpads = 23
         
         self.cell = cad.core.Cell(name)
-        if frame==True:
+        if frame==True or label==True:
             if wafer==False:
                 if labelloc==(0,0):
                     labelloc=(-200.,self.ydim/2. - 2*self.boxwidth-700.)
-                self.make_layout(labelloc,labelwidth)
+                self.make_layout(frame,label,labelloc,labelwidth)
             else:
-                self.make_wafer(wafer_d[wafer]/2,labelloc,labelwidth)
+                self.make_wafer(wafer_d[wafer]/2,frame,label,labelloc,labelwidth)
 
 
-    def make_layout(self,labelloc,labelwidth):
+    def make_layout(self,frame,label,labelloc,labelwidth):
         """
         Generate chip with dimensions xdim,ydim
         """
@@ -62,11 +62,13 @@ class Base_Chip():
                                          layer=self.layer_label)
 
 
-        self.cell.add(box)
-        self.cell.add(label_grid_chip)
+        if frame==True:
+            self.cell.add(box)
+        if label==True:
+            self.cell.add(label_grid_chip)
         
         
-    def make_wafer(self,wafer_r,labelloc,labelwidth):
+    def make_wafer(self,wafer_r,frame,label,labelloc,labelwidth):
         """
         Generate wafer with primary flat on the left. From https://coresix.com/products/wafers/ I estimated that the angle defining the wafer flat to arctan(flat/2 / radius)
         """
@@ -85,9 +87,11 @@ class Base_Chip():
                                          layer=self.layer_label)
 
 
-        self.cell.add(circ)
-        self.cell.add(flat)
-        self.cell.add(label_grid_chip)
+        if frame==True:
+            self.cell.add(circ)
+            self.cell.add(flat)
+        if label==True:
+            self.cell.add(label_grid_chip)
 
 
     def add_component(self,cell_obj, pos):
@@ -215,14 +219,14 @@ class Base_Chip():
         result_cell.add(not_chip)
         self.cell = result_cell
     '''
-    '''    
+       
     def add_TUlogo(self, pos=(0,100)):
         """
         *** BROKEN
         Issue with dxfImport
         """
         # logo is added 100um below bottom edge of chip
-        logo = cad.core.DxfImport('examples/TU_Delft_logo_Black.dxf',scale=1.0)
-        logo.layer=self.layer_label
+        logo = cad.core.DxfImport('examples/cad_files/TU_Delft_logo_Black.dxf',scale=1.0)
+        #logo.layer=self.layer_label
         self.cell.add(logo)
-    '''
+    

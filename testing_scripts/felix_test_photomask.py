@@ -130,5 +130,5 @@ for pos in [(-10e3,0),(0,0),(10e3,0)]:
 # Dicing marker for DC
 chip.add_dicing_marker(pos=(-5e3,5e3),span=[(-10e3,10e3),(-10e3,10e3)])
 
-# chip.add_TUlogo()
+chip.add_TUlogo(pos=(5000,-5000))
 chip.save_to_gds(show = False, save = True)

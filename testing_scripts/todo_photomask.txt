@@ -1,5 +1,0 @@
-- Extend hanger design: 4x empty, 4x squids (top, bottom)
-- Shunt: 4x single squid to ground, no gate
-- chip3: JPA (top), 2x transmon (bottom, reflection)
-
-- Boolean operations: cad.core.BooleanOps.sub(Frame, object) ???
