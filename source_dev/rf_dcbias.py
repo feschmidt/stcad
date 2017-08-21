@@ -6,9 +6,7 @@ class RFShunt():
     """
     Class for RF DC bias cavities
     Initial values:
-        - radius = 100
-        - end = "open". Other good values are "short" (to GND) or "squid"
-    TODO: Label each resonator with specified termination
+        - termination = "open". Other good values are "short" (to GND) or "squid"
     """
 
     def __init__(self, name, dict_dcbias, termination = "open"):
