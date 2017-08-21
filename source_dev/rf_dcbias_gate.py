@@ -1,8 +1,12 @@
+#*** BROKEN
+
 import numpy as np
 import gdsCAD as cad
 
 class ShuntCavity():
     '''
+    *** BROKEN
+    *** Needs to be updated to the standard format of rf_dcbias.py
     Class for RF cavities with one or two shunt capacitors at either, and one hole at the far, end.
     Note: The design is currently centered around (5000,5000) and not the (0,0) origin of the Base_Chip class!
     '''
