@@ -129,7 +129,7 @@ class Base_Chip():
         self.cell.add(marker)
 
 
-    def save_to_gds(self, loc = 'testing_scripts/', save = True, show = True):
+    def save_to_gds(self, loc = 'examples/', save = True, show = True):
         """
         Save and show gds file
         Default location in testing/, can be adjusted via loc
