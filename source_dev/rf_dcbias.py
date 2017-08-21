@@ -1,6 +1,6 @@
 import numpy as np
 import gdsCAD as cad
-import source_dev.utilities as utils
+import utilities as utils
 
 class RFShunt():
     """
