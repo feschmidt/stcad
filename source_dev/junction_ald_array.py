@@ -63,7 +63,8 @@ class Junctionchip():
             junction = cad.core.Path(junctionpoints, jjwidth, layer = self.layer_top)
             junction_label = cad.shapes.LineLabel(k,200,(xs-padwidth/2,-2e3), layer=self.layer_top)
 
-            pad = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + padwidth + xs,self.y0 + padlength))
+            pad_bot = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + padwidth + xs,self.y0 + padlength), layer=self.layer_bottom)
+            pad_top = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + padwidth + xs,self.y0 + padlength), layer = self.layer_top)
             tripoints = [[self.x0 + xs,self.y0 + padlength],
                         [self.x0 + padwidth / 2. + xs,tripeak],
                         [self.x0 + padwidth + xs, self.y0 + padlength]]
@@ -73,9 +74,9 @@ class Junctionchip():
                 ll = self.layer_bottom
             else:
                 ll = self.layer_top
-            pad.layer = ll
             tri.layer = ll
-            self.padgroup[ll-1].add(pad)
+            self.padgroup[ll-1].add(pad_bot)
+            self.padgroup[ll-1].add(pad_top)
             self.padgroup[ll-1].add(tri)
 
             if i!=0:
