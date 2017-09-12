@@ -39,14 +39,15 @@ class Junctiontest():
         ref_cell = cad.core.Cell('REF_CELL')
         self.cell = cad.core.Cell('GRID_CHIP')
         # label_grid = cad.shapes.LineLabel(' Block'  ,30, (pos_endx/2.,pos_endy+50),layer=3)
-        for j in range(0, self.nrows):
+        for j in range(0, self.ncols):
 
-            for i in range(0, self.ncols):
+            for i in range(0, self.nrows):
 
                 junc_width = self.w_junc_start + \
                     (j * self.nrows + i) * self.dw_junc
                 self.dict_junctions['junction_width'] = junc_width
                 name = 'testjj_' + str(junc_width)
+                print junc_width
                 test_junction.name = name
                 test_junction.gen_pattern()
 
@@ -69,16 +70,16 @@ class Junctiontest():
         pos_endx = self.cell.bounding_box[1][0]
         pos_endy = self.cell.bounding_box[1][1]
 
-        # Making 10 standard calibration junctions
-        posx_cal_jj = pos_endx + self.block_spacing[0]
-        posy_cal_jj = pos_endy / 2.
-        for n in range(0, 2):
-            for m in range(0, 5):
-                name = 'testcalibrationjj_' + str()
-                test_junction.name = name
-                test_junction.short = True
-                test_junction.gen_pattern()
+        # # Making 10 standard calibration junctions
+        # posx_cal_jj = pos_endx + self.block_spacing[0]
+        # posy_cal_jj = pos_endy / 2.
+        # for n in range(0, 2):
+        #     for m in range(0, 5):
+        #         name = 'testcalibrationjj_' + str()
+        #         test_junction.name = name
+        #         test_junction.short = True
+        #         test_junction.gen_pattern()
 
-                # We have 5 calibration junctions spaced 50 um apart
-                self.cell.add(test_junction.cell,
-                              origin=(posx_cal_jj + m * self.dx, posy_cal_jj + n * self.dy))
+        #         # We have 5 calibration junctions spaced 50 um apart
+        #         self.cell.add(test_junction.cell,
+        #                       origin=(posx_cal_jj + m * self.dx, posy_cal_jj + n * self.dy))
