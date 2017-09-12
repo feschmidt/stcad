@@ -49,6 +49,6 @@ for i in range(2):
 chippos = [(-2.5e3,2.5e3),(-2.5e3,-2.5e3),(2.5e3,2.5e3),(2.5e3,-2.5e3)]
 chip_sub1 = Base_Chip('felix_test_sub1',xdim=10e3,ydim=10e3,labelloc=(-600,4500))
 for chipi,pos in zip([chipjj[0], chipsquid[0], chipjj[1], chipsquid[1]], chippos):
-    chip.add_component(chipi.cell,(pos[0],pos[1]))
+    chip_sub1.add_component(chipi.cell,(pos[0],pos[1]))
 
 chip_sub1.save_to_gds(show = False, save = True)
