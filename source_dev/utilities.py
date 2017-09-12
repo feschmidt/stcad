@@ -4,6 +4,28 @@ import numpy as np
 import collections
 #import gdspy
 
+def shapely_to_poly(shapely_Polygon):
+	"""
+	converts a shapely polygon to a gdsCAD Boundary.
+	"""
+	pol_type = shapely_Polygon.geom_type
+	if pol_type != 'Polygon':
+		raise ValueError('Shapely to Polygon > Input is not a polygon!')
+	else:
+		points = np.array(shapely_Polygon.exterior.coords.xy)
+		reshaped_points = np.transpose(points)
+		polygon = cad.core.Boundary(reshaped_points)
+
+	return polygon
+
+def poly_to_shapely(polygon):
+	"""
+	converts a polygon or Boundary to a shapely polygon
+	"""
+	points = polygon.points
+	shapely_polygon = shapely.geometry.Polygon(points)
+
+	return shapely_polygon
 
 def make_rounded_edges(rectangle, radius, dict_corners):
 	
@@ -66,9 +88,6 @@ def make_rounded_edges(rectangle, radius, dict_corners):
 	out.layer = original_layer
 	return out
 
-
-
-
 def mask_disk(radius):
 
 	circle = shapely.geometry.Point(0, 0).buffer(radius, resolution=64)
@@ -81,31 +100,7 @@ def mask_disk(radius):
 
 	return quarter_disk
 
-def shapely_to_poly(shapely_Polygon):
-	"""
-	converts a shapely polygon to a gdsCAD Boundary.
-	"""
-	pol_type = shapely_Polygon.geom_type
-	if pol_type != 'Polygon':
-		raise ValueError('Shapely to Polygon > Input is not a polygon!')
-	else:
-		points = np.array(shapely_Polygon.exterior.coords.xy)
-		reshaped_points = np.transpose(points)
-		polygon = cad.core.Boundary(reshaped_points)
-
-	return polygon
-
-def poly_to_shapely(polygon):
-	"""
-	converts a polygon or Boundary to a shapely polygon
-	"""
-	points = polygon.points
-	shapely_polygon = shapely.geometry.Polygon(points)
-
-	return shapely_polygon
-
-def join_polygons(polygon1,
-                  polygon2,format_shapely=False):
+def join_polygons(polygon1,polygon2,format_shapely=False):
     """
     Inputs are:
         polygon1, polygon
@@ -125,6 +120,30 @@ def join_polygons(polygon1,
 
     	joined_poly = shapely_polygon1.union(shapely_polygon2)
     	out = joined_poly
+
+
+    return out
+
+def xor_polygons(polygon1,polygon2,format_shapely=False):
+    """
+    Inputs are:
+        polygon1, polygon
+        polygon2, polygon
+    joining two polygons. Works better if there is overlap.
+    Returns polygon = polygon1 U polygon2
+    """
+    if format_shapely == False:
+    	shapely_polygon1 = poly_to_shapely(polygon1)
+    	shapely_polygon2 = poly_to_shapely(polygon2)
+    	xor_poly = shapely_polygon1.difference(shapely_polygon2)
+    	out = shapely_to_poly(xor_poly)
+
+    else:
+    	shapely_polygon1 = polygon1
+    	shapely_polygon2 = polygon2
+
+    	xor_poly = shapely_polygon1.difference(shapely_polygon2)
+    	out = xor_poly
 
 
     return out
