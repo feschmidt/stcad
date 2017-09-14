@@ -1,10 +1,9 @@
 import numpy as np
 import gdsCAD as cad
 import time
-#import gdspy
+       
 
-
-class Base_Chip():
+class Base_Chip(cad.core.Cell):
 
     """
     This object represent a single chip and can be considered as the parentobject.
@@ -19,6 +18,7 @@ class Base_Chip():
     """
     def __init__(self, name, xdim=1000, ydim=1000, frame=True, label=True, wafer=False, labelloc=(0,0), labelwidth=5):
         
+        super(Base_Chip, self).__init__(name)
         self.name = name
         self.xdim = xdim
         self.ydim = ydim
@@ -36,7 +36,6 @@ class Base_Chip():
         self.layer_alignment = 22
         self.layer_testpads = 23
         
-        self.cell = cad.core.Cell(name)
         if frame==True or label==True:
             if wafer==False:
                 if labelloc==(0,0):
@@ -63,9 +62,9 @@ class Base_Chip():
 
 
         if frame==True:
-            self.cell.add(box)
+            self.add(box)
         if label==True:
-            self.cell.add(label_grid_chip)
+            self.add(label_grid_chip)
         
         
     def make_wafer(self,wafer_r,frame,label,labelloc,labelwidth):
@@ -88,24 +87,30 @@ class Base_Chip():
 
 
         if frame==True:
-            self.cell.add(circ)
-            self.cell.add(flat)
+            self.add(circ)
+            self.add(flat)
         if label==True:
-            self.cell.add(label_grid_chip)
+            self.add(label_grid_chip)
 
 
-    def add_component(self,cell_obj, pos):
+    def add_component(self,cell_obj, pos = False):
         """
         params cell_obj : cell object to add to maincell
         params pos : tuple of positions
+
+        This function is irrelevant now that this class inherits from 
+        Cell, we can simply use add() directly on the chip class
         """
-        if pos[0]> self.xdim/2 or pos[0]<-self.xdim/2:
-            raise ValueError(" component lies out of layout") 
 
-        if pos[1]> self.ydim/2 or pos[1]<-self.ydim/2:
-            raise ValueError(" component lies out of layout") 
+        if pos == False:
+            self.add(cell_obj)
+        else:
+            if pos[0]> self.xdim/2 or pos[0]<-self.xdim/2:
+                raise ValueError(" component lies out of layout") 
 
-        self.cell.add(cell_obj,origin=pos)
+            if pos[1]> self.ydim/2 or pos[1]<-self.ydim/2:
+                raise ValueError(" component lies out of layout") 
+            self.add(cell_obj,origin=pos)
 
     
     def add_ebpg_marker(self, pos=(-3310,-1560), size=20, spacing=200, number=4, duplicate=True):
@@ -126,7 +131,7 @@ class Base_Chip():
             marker[1] = cad.core.CellReference(marker[0], origin=(-2*pos[0]-spacing,-2*pos[1]-spacing))
             marker[2] = cad.core.CellReference(marker[0], origin=(0,-2*pos[1]-spacing))
             marker[3] = cad.core.CellReference(marker[0], origin=(-2*pos[0]-spacing,0))
-        self.cell.add(marker)
+        self.add(marker)
 
 
     def save_to_gds(self, loc = 'examples/', save = True, show = False):
@@ -135,7 +140,7 @@ class Base_Chip():
         Default location in testing/, can be adjusted via loc
         """
         layout = cad.core.Layout('MAIN_CHIP')
-        layout.add(self.cell)
+        layout.add(self)
         if save:
             layout.save(loc + self.name + '.gds')
         if show:
@@ -152,7 +157,7 @@ class Base_Chip():
         for i in range(num):
             box = cad.shapes.Rectangle((x[i]-dim[0]/2,y[i]-dim[1]/2),(x[i]+dim[0]/2,y[i]+dim[1]/2), layer = self.layer_testpads)
             pads.add(box)
-        self.cell.add(pads)
+        self.add(pads)
 
 
     def add_photolitho_marker(self, pos=(0,0), layer=(1,2)):
@@ -163,7 +168,7 @@ class Base_Chip():
         amarks0 = cad.templates.AlignmentMarks(('A','C'),layer)
         amarks = cad.core.CellReference(amarks0).translate(pos)
         marker.add(amarks)
-        self.cell.add(amarks)
+        self.add(amarks)
     
     
     def add_photolitho_vernier(self, pos=(-500,-500), layer=(1,2)):
@@ -174,7 +179,7 @@ class Base_Chip():
         vmarks0 = cad.templates.Verniers(('A','B'),layer)
         vmarks = cad.core.CellReference(vmarks0).translate(pos)
         verniers.add(vmarks)
-        self.cell.add(verniers)
+        self.add(verniers)
         
         
     def add_dicing_marker(self, pos=(0,0), hor=True, vert=True, span=False, length=1000):
@@ -202,7 +207,7 @@ class Base_Chip():
                 vmarks = cad.utils.translate(vmarks0, (pos[0],2*yy+pos[1]))
                 marker.add(vmarks)
 
-        self.cell.add(marker)
+        self.add(marker)
     '''           
     def chip_not(self):
         """
@@ -213,11 +218,11 @@ class Base_Chip():
         #not_box = cad.core.CellReference(n_box)
         box = gdspy.Rectangle((-self.xdim/2, -self.ydim/2), (self.xdim/2, self.ydim/2))
         #not_box.add(box)
-        original = cad.core.CellReference(self.cell)
+        original = cad.core.CellReference(self)
         not_chip = gdspy.fast_boolean(box, original, 'not')
         result_cell = gdspy.Cell('NOT_CELL')
         result_cell.add(not_chip)
-        self.cell = result_cell
+        self = result_cell
     '''
        
     def add_TUlogo(self, pos=(0,100)):
@@ -228,5 +233,5 @@ class Base_Chip():
         # logo is added 100um below bottom edge of chip
         logo = cad.core.DxfImport('examples/cad_files/TU_Delft_logo_Black.dxf',scale=1.0)
         #logo.layer=self.layer_label
-        self.cell.add(logo)
+        self.add(logo)
     
