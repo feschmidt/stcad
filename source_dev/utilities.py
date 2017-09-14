@@ -165,3 +165,20 @@ def correct_for_multipol(pol):
         max_area_id = np.argmax(area)
         pol = pol.geoms[max_area_id]
     return pol
+
+class Hexagon(cad.core.Cell):
+	"""docstring for Hexagon"""
+	def __init__(self, width, layer = cad.core.default_layer,name=''):
+		super(Hexagon, self).__init__(name)
+		self.width = width
+		self.name = name
+		self.layer = layer
+		hex_width = width
+
+		points = [[-hex_width/2.,0],\
+			[-hex_width/4.,np.sqrt(hex_width**2/4.-hex_width**2/16.)],\
+			[+hex_width/4.,np.sqrt(hex_width**2/4.-hex_width**2/16.)],\
+			[+hex_width/2.,0],\
+			[+hex_width/4.,-np.sqrt(hex_width**2/4.-hex_width**2/16.)],\
+			[-hex_width/4.,-np.sqrt(hex_width**2/4.-hex_width**2/16.)]]
+		self.add(cad.core.Boundary(points,layer = self.layer))
