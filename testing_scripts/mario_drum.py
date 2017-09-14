@@ -21,4 +21,4 @@ inductor = Drum(base_layer = 1,
 					hole_distance_to_edge = 0.5,
 					name = '')
 chip.add_component(inductor, (0,0))
-chip.save_to_gds(show=False, save=True)
+chip.save_to_gds(show=False, save=True,loc='')
