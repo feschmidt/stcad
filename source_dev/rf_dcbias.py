@@ -327,12 +327,13 @@ class RFShunt():
     def gen_label(self,pos):
         """
         Generate label with termination type
-        if squid: squid wJJ x wlead \n wSQUID x lSQUID
+        if squid: squid wJJ x wlead \n wSQUID x lSQUID \n cavlength
         """
         labelcell = cad.core.Cell('DEV_LABEL')
         if self.termination=='squid':
             label = cad.shapes.LineLabel(self.termination+' '+str(self.squid[2])+'x'+str(self.squid[3])+\
-                                            '\n'+str(self.squid[0])+'x'+str(self.squid[1]),100,
+                                            '\n'+str(self.squid[0])+'x'+str(self.squid[1])+\
+                                            '\n'+str(self.length),100,
                                          (pos[0],pos[1]),line_width=5,layer=self.layer_bottom)
         labelcell.add(label)
         return labelcell

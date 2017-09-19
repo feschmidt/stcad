@@ -18,14 +18,24 @@ rf_feed_hor = rffeedline.gen_feedline()
 
 
 ####### Add RF hangers
+'''
 dict_hangers = {'length': 4000,
             'couplinglength': 600,
             'couplinggap': 10,
             'centerwidth': 4,
             'gapwidth': 20,
-            'coupling': 'inductive',
+            'coupling': 'capacitive',
             'orientation': 'up',
             'position': [-3.3e3,3440]}
+'''
+dict_hangers = {'length': 4000,
+            'couplinglength': 600,
+            'couplinggap': 10,
+            'centerwidth': 4,
+            'gapwidth': 20,
+            'coupling': 'capacitive',
+            'orientation': 'up',
+            'position': [-3.3e3,3.5e3+1]}
 dict_hangers2 = dict_hangers.copy()
 dict_hangers2['orientation'] = 'down'
 dict_hangers2['coupling'] = 'capacitive'
@@ -36,11 +46,14 @@ rfhangers2 = hangers.RFHangers('Hangers', dict_hangers2, squid=True)
 rf_hangers2 = rfhangers2.gen_full()
 
 chipsize = 10e3
-chip_sub2 = Base_Chip('RF HANGERS', chipsize, chipsize)
+chip_sub2 = Base_Chip('felix_test_sub2', chipsize, chipsize)
 chip_sub2.add_component(rf_feed_hor, (0,3.5e3))
 chip_sub2.add_component(rf_feed_hor, (0,-3.5e3))
 chip_sub2.add_component(rf_hangers, (0,0))
 chip_sub2.add_component(rf_hangers2, (0,0))
 chip_sub2.add_ebpg_marker((-3.3e3, -1.5e3))
 
-chip_sub2.save_to_gds(show=True, save=False)
+chip_sub2.add_photolitho_marker()
+chip_sub2.add_photolitho_vernier(pos=(-300,-400))
+
+chip_sub2.save_to_gds(show=False, save=True)

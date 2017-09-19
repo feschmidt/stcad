@@ -46,9 +46,9 @@ for i,loc,pos in zip(range(4),('sw','se','ne','nw'),((-2400,-1400),(2000,-1400),
     chip_sub3.add_component(rf_dcvacs_label, (0,0))
 
 chip_sub3.add_ebpg_marker((-3.3e3, -1.5e3))
-chip_sub3.add_photolitho_marker(pos=(-500,0))
+chip_sub3.add_photolitho_marker(pos=(-300,0))
 chip_sub3.add_photolitho_vernier(pos=(-100,-500))
-chip_sub3.add_photolitho_marker(layer=(1,3),pos=(500,0))
+chip_sub3.add_photolitho_marker(layer=(1,3),pos=(300,0))
 chip_sub3.add_photolitho_vernier(layer=(1,3),pos=(-100,200))
 
 chip_sub3.save_to_gds(show=False, save=True)

@@ -49,8 +49,10 @@ chip.add_component(rf_jpa2, (0,0))
 chip.add_component(rf_feed_hor, (0,3500))
 chip.add_ebpg_marker((-3300, -1500))
 chip.add_ebpg_marker((feedlength-4150, -3750), spacing=500, duplicate=False)    # add extra markers for trimming
-chip.add_photolitho_marker()
-chip.add_photolitho_vernier()
+chip.add_photolitho_marker(pos=(-500,0))
+chip.add_photolitho_vernier(pos=(-100,-500))
+chip.add_photolitho_marker(layer=(1,3),pos=(500,0))
+chip.add_photolitho_vernier(layer=(1,3),pos=(-100,200))
 
 
 # chip.add_TUlogo()
