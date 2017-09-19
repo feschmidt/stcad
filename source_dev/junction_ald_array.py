@@ -32,6 +32,7 @@ class Junctionchip():
         triheight = self.dict_pads['triheight']
         tripeak = self.y0 + padlength + triheight
 
+        location = self.dict_junctions['location']
         jjwidth = self.dict_junctions['width']
         jjmin = self.dict_junctions['jjmin']
         jjmax = self.dict_junctions['jjmax']
@@ -43,7 +44,7 @@ class Junctionchip():
             self.tlength = (padwidth+padspace)*(amount)/2-padwidth/2
 
         cwidth = 20
-        source = 200
+        source = 50
         centerpoints = [(0, tripeak - cwidth / 2),
                         (0, tripeak + source + cwidth / 2),
                         (self.tlength, tripeak + source + cwidth / 2),
@@ -62,6 +63,7 @@ class Junctionchip():
                             (xs, tripeak + source + k)]
             junction = cad.core.Path(junctionpoints, jjwidth, layer = self.layer_top)
             junction_label = cad.shapes.LineLabel(k,200,(xs-padwidth/2,-2e3), layer=self.layer_top)
+            array_label = cad.shapes.LineLabel('J'+str(jjwidth),200,(-100,-2e3), layer=self.layer_bottom)
 
             pad_bot = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + padwidth + xs,self.y0 + padlength), layer=self.layer_bottom)
             pad_top = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + padwidth + xs,self.y0 + padlength), layer = self.layer_top)
@@ -82,9 +84,13 @@ class Junctionchip():
             if i!=0:
                 self.padgroup[ll-1].add(junction)
                 self.padgroup[ll-1].add(junction_label)
+        self.padgroup[0].add(array_label)
 
-        # Create full array by inputting bottom junction row into dc_24pin method gen_full_array
-        self.cell = dc_24pin.gen_full_array(padgroup = self.padgroup)
+        # Create full array by inputting bottom junction row into dc_24pin method
+        if location == 'all':
+            self.cell = dc_24pin.gen_full_array(padgroup = self.padgroup)
+        else:
+            self.cell = dc_24pin.gen_partial(padgroup = self.padgroup, loc=location)
 
 
 

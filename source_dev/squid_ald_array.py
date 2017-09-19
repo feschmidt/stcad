@@ -32,6 +32,7 @@ class SQUIDchip():
         triheight = self.dict_pads['triheight']
         tripeak = self.y0 + padlength + triheight
 
+        location = self.dict_junctions['location']
         jjwidth = self.dict_junctions['width']
         jjmin = self.dict_junctions['jjmin']
         jjmax = self.dict_junctions['jjmax']
@@ -44,7 +45,7 @@ class SQUIDchip():
     
         cwidth = 20
         drain = 100
-        source = 100
+        source = 50
         centerpoints = [(0, tripeak - cwidth / 2),
                         (0, tripeak + source + dim[1] + drain + cwidth / 2),
                         (self.tlength-5, tripeak + source + dim[1] + drain + cwidth / 2),
@@ -69,7 +70,8 @@ class SQUIDchip():
                                     [xs+dim[0]/2,tripeak+source+dim[1]+(k+1)*jjstep]],
                                     jjwidth, layer=self.layer_top)
             junction_label = cad.shapes.LineLabel(k,200,(xs-padwidth/2,-2e3), layer=self.layer_top)
-
+            array_label = cad.shapes.LineLabel('S'+str(jjwidth),200,(-100,-2e3), layer=self.layer_bottom)
+            
             pad_bot = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + padwidth + xs,self.y0 + padlength), layer=self.layer_bottom)
             pad_top = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + padwidth + xs,self.y0 + padlength), layer = self.layer_top)
             tripoints = [[self.x0 + xs,self.y0 + padlength],
@@ -98,9 +100,13 @@ class SQUIDchip():
                 self.padgroup[ll-1].add(squid_left)
                 self.padgroup[ll-1].add(squid_right)
                 self.padgroup[ll-1].add(junction_label)
-
-        # Create full array by inputting bottom junction row into dc_24pin method gen_full_array
-        self.cell = dc_24pin.gen_full_array(padgroup = self.padgroup)
+        self.padgroup[0].add(array_label)
+    
+        # Create full array by inputting bottom junction row into dc_24pin method
+        if location == 'all':
+            self.cell = dc_24pin.gen_full_array(padgroup = self.padgroup)
+        else:
+            self.cell = dc_24pin.gen_partial(padgroup = self.padgroup, loc=location)
 
 
 

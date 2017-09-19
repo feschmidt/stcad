@@ -74,8 +74,6 @@ class Feedline():
             # launcher1 = cad.utils.rotate(launcher1, 90)
             # launcher2 = cad.utils.rotate(launcher2, 90)
 
-        
-
         return self.main_cell
 
 
@@ -201,3 +199,6 @@ class Feedline():
         launcherlist = cad.utils.translate(launcherlist, pos)
 
         return launcherlist
+    
+    
+

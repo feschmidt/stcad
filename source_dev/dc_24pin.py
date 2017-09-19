@@ -9,27 +9,52 @@ def gen_full_array(padgroup):
     Multiply padgroup cell for ALD JJs and SQUIDs and arrange them along the four sides of a 6x6mm2 chip
     '''
     # Merge objects into cells
-    bottom = [cad.core.Cell('BOTTOM LAYER')] * 4
-    bottom[0].add(padgroup[0]) 
-    bottom[1] = cad.core.CellReference(bottom[0], origin=(0,0),rotation=90)
-    bottom[2] = cad.core.CellReference(bottom[0], origin=(0,0),rotation=180)
-    bottom[3] = cad.core.CellReference(bottom[0], origin=(0,0),rotation=270)
+    bottom = cad.core.Cell('BOTTOM LAYER')
+    bottom.add(padgroup[0]) 
+    bottom.add(cad.core.CellReference(padgroup[0], origin=(0,0),rotation=90))
+    bottom.add(cad.core.CellReference(padgroup[0], origin=(0,0),rotation=180))
+    bottom.add(cad.core.CellReference(padgroup[0], origin=(0,0),rotation=270))
 
-    top = [cad.core.Cell('TOP LAYER')] * 4
-    top[0].add(padgroup[1])
-    top[1] = cad.core.CellReference(top[0], origin=(0,0),rotation=90)
-    top[2] = cad.core.CellReference(top[0], origin=(0,0),rotation=180)
-    top[3] = cad.core.CellReference(top[0], origin=(0,0),rotation=270)
+    top = cad.core.Cell('TOP LAYER')
+    top.add(padgroup[1]) 
+    top.add(cad.core.CellReference(padgroup[1], origin=(0,0),rotation=90))
+    top.add(cad.core.CellReference(padgroup[1], origin=(0,0),rotation=180))
+    top.add(cad.core.CellReference(padgroup[1], origin=(0,0),rotation=270))
 
     # Merge all cells
     maincell = cad.core.Cell('MAIN')
     maincell.add(bottom)
     maincell.add(top)
+    return maincell
+    
 
+def gen_partial(padgroup, loc='s'):
+    """
+    Generate one padgroup cell at specified loc(ation)
+    values for loc: s, e, n, w
+    """
+    
+    # Merge objects into cells
+    bottom = cad.core.Cell('BOTTOM LAYER')
+    top = cad.core.Cell('TOP LAYER')
 
-    # Create a layout and add the cell
-    # Maybe this is the problem??
-    layout = cad.core.Cell('GRID_CHIP')
-    layout.add(maincell)
-    return layout
+    if loc == 's':
+        bottom.add(padgroup[0])
+        top.add(padgroup[1]) 
+    elif loc == 'e':
+        bottom.add(cad.core.CellReference(padgroup[0], origin=(0,0),rotation=90))
+        top.add(cad.core.CellReference(padgroup[1], origin=(0,0),rotation=90))
+    elif loc == 'n':
+        bottom.add(cad.core.CellReference(padgroup[0], origin=(0,0),rotation=180))
+        top.add(cad.core.CellReference(padgroup[1], origin=(0,0),rotation=180))
+    elif loc == 'w':
+        bottom.add(cad.core.CellReference(padgroup[0], origin=(0,0),rotation=270))
+        top.add(cad.core.CellReference(padgroup[1], origin=(0,0),rotation=270))
+    else:
+        raise ValueError("loc(ation) is invalid. Allowed values are s, e, n, w.")
 
+    # Merge all cells
+    maincell = cad.core.Cell('MAIN')
+    maincell.add(bottom)
+    maincell.add(top)
+    return maincell
