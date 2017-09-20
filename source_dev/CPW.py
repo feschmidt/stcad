@@ -41,7 +41,7 @@ class CPW(cad.core.Cell):
         self.layer = layer
 
         if len(points) == 2:
-            self.add(double_line_polygon(points[0],points[1], pin,gap))
+            self.add(double_line_polygon(points[0],points[1],gap,pin))
             self.length += norm(points[1]-points[0])
         else:
             n_last = len(points)-1
@@ -58,17 +58,17 @@ class CPW(cad.core.Cell):
                 if angle_delta > 180.:
                     angle_delta-=360.
                 sec.append(p_before)
-                self.add(double_line_polygon(sec[0],sec[1], pin,gap))
+                self.add(double_line_polygon(sec[0],sec[1],gap,pin))
                 self.length += norm(sec[1]-sec[0])
-                self.add(double_arc_polygon(curve_center, turn_radius, pin,gap,\
+                self.add(double_arc_polygon(curve_center, turn_radius,gap,pin,\
                                     initial_angle=angle_i, final_angle=angle_i+angle_delta, number_of_points = 199))
                 self.length += 2*np.pi*turn_radius*abs(angle_delta)/360.
                 sec=[p_after]
             sec.append([points[n_last][0],points[n_last][1]])
-            self.add(double_line_polygon(sec[0],sec[1], pin,gap))
+            self.add(double_line_polygon(sec[0],sec[1],gap,pin))
             self.length += norm(sec[1]-sec[0])
 
-    def add_launcher(self,pos,bonding_pad_length = 50,launcher_gap = 30,launcher_pin =40,launcher_length = 100,buffer_length = 30):
+    def add_launcher(self,pos,bonding_pad_length = 50,bonding_pad_gap = 30,bonding_pad_width =40,taper_length = 100,buffer_length = 30):
         if pos == 'beginning' or pos=='b':
             p_0 = self.points[0]
             p_1 = self.points[1]
@@ -94,15 +94,15 @@ class CPW(cad.core.Cell):
         startpoint = 0
         transl = pos
 
-        launchpoints_top = [[-buffer_length-launcher_length-bonding_pad_length, 0 ],
-                            [-buffer_length-launcher_length-bonding_pad_length, launcher_gap + launcher_pin/2. ],
-                            [-buffer_length-launcher_length-bonding_pad_length, launcher_gap + launcher_pin/2. ],
-                            [-launcher_length, launcher_gap + launcher_pin/2. ],
+        launchpoints_top = [[-buffer_length-taper_length-bonding_pad_length, 0 ],
+                            [-buffer_length-taper_length-bonding_pad_length, bonding_pad_gap + bonding_pad_width/2. ],
+                            [-buffer_length-taper_length-bonding_pad_length, bonding_pad_gap + bonding_pad_width/2. ],
+                            [-taper_length, bonding_pad_gap + bonding_pad_width/2. ],
                             [0, self.gap + self.pin/2. ],
                             [0, self.pin/2. ],
-                            [-launcher_length, launcher_pin/2. ],
-                            [-launcher_length-bonding_pad_length, launcher_pin/2. ],
-                            [-launcher_length-bonding_pad_length,0. ]]
+                            [-taper_length, bonding_pad_width/2. ],
+                            [-taper_length-bonding_pad_length, bonding_pad_width/2. ],
+                            [-taper_length-bonding_pad_length,0. ]]
 
         launcher1 = cad.core.Boundary(launchpoints_top,layer = self.layer)
         launcher2 = cad.utils.reflect(launcher1, 'x')
@@ -143,7 +143,7 @@ class CPW(cad.core.Cell):
 if __name__ == '__main__':
   chipsize = 250
   chip = Base_Chip('CPW', chipsize, chipsize,label=False)
-  cp = CPW([[-100,-50],[-50,-50],[-50,0],[50,0],[50,-50],[0,-50]])
+  cp = CPW([[-100,-50],[-50,-50],[-50,0],[50,0],[50,-50],[0,-50]],pin=3,gap=5)
   print cp.length
   cp.add_launcher('beginning')
   cp.add_open('end')
