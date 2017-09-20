@@ -183,7 +183,6 @@ class Hexagon(cad.core.Cell):
 			[-hex_width/4.,-np.sqrt(hex_width**2/4.-hex_width**2/16.)]]
 		self.add(cad.core.Boundary(points,layer = self.layer))
 
-
 def angle(vec):
     return np.arctan2(vec[1],vec[0])
 
