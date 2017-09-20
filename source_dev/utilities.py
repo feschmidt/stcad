@@ -135,7 +135,7 @@ def xor_polygons(polygon1,polygon2,format_shapely=False):
     if format_shapely == False:
     	shapely_polygon1 = poly_to_shapely(polygon1)
     	shapely_polygon2 = poly_to_shapely(polygon2)
-    	xor_poly = shapely_polygon1.difference(shapely_polygon2)
+    	xor_poly = shapely_polygon1.symmetric_difference(shapely_polygon2)
     	out = shapely_to_poly(xor_poly)
 
     else:
@@ -182,3 +182,49 @@ class Hexagon(cad.core.Cell):
 			[+hex_width/4.,-np.sqrt(hex_width**2/4.-hex_width**2/16.)],\
 			[-hex_width/4.,-np.sqrt(hex_width**2/4.-hex_width**2/16.)]]
 		self.add(cad.core.Boundary(points,layer = self.layer))
+
+
+def angle(vec):
+    return np.arctan2(vec[1],vec[0])
+
+def line_polygon(start, end, line_width):
+	e=np.array(end)
+	s=np.array(start)
+	ang = angle(e-s)
+	vec = float(line_width)/2.*np.array([-np.sin(ang),np.cos(ang)])
+	print ang
+	return cad.core.Boundary(np.array([start+vec,end+vec,end-vec,start-vec]))
+
+def double_line_polygon(start, end, line_width,seperation):
+	e=np.array(end)
+	s=np.array(start)
+	ang = angle(e-s)
+	vec = np.array([-np.sin(ang),np.cos(ang)])
+	line_1 = cad.core.Boundary(np.array([start+(seperation/2.+line_width)*vec,end+(seperation/2.+line_width)*vec,end+(seperation/2.)*vec,start+(seperation/2.)*vec]))
+	line_2 = cad.core.Boundary(np.array([start-(seperation/2.+line_width)*vec,end-(seperation/2.+line_width)*vec,end-(seperation/2.)*vec,start-(seperation/2.)*vec]))
+	
+	return [line_1,line_2]
+
+def arc_polygon(center,radius, line_width, final_angle = 0,initial_angle = 0, number_of_points = 199):
+
+    if final_angle == initial_angle:
+        final_angle += 360.0
+        
+    angles = np.linspace(initial_angle, final_angle, number_of_points).T * np.pi/180.
+
+    points=np.vstack((np.cos(angles), np.sin(angles))).T * (radius+line_width/2.) + np.array(center)
+
+    points2 = np.vstack((np.cos(angles), np.sin(angles))).T * (radius-line_width/2.) + np.array(center)
+    points=np.vstack((points, points2[::-1]))
+    
+    return cad.core.Boundary(np.array(points))
+
+def double_arc_polygon(center,radius, line_width,seperation, final_angle = 0,initial_angle = 0, number_of_points = 199):
+
+    arc_1 = arc_polygon(center,radius-seperation/2.-line_width/2., line_width, final_angle,initial_angle, number_of_points)
+    arc_2 = arc_polygon(center,radius+seperation/2.+line_width/2., line_width, final_angle,initial_angle, number_of_points)
+    return [arc_1,arc_2]
+
+
+if __name__ == '__main__':
+	print arc_polygon([0,0],10, 3,number_of_points = 5)
