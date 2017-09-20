@@ -23,7 +23,7 @@ def norm(vec):
 class CPW(cad.core.Cell):
     """docstring for CPW"""
     def __init__(self, 
-        points = [[-100,0],[-100,-50],[-50,-50],[-50,0],[50,0],[50,-50],[0,-50]],
+        points,
         turn_radius = 5.,
         pin = 1.,
         gap = 1.,
@@ -143,7 +143,7 @@ class CPW(cad.core.Cell):
 if __name__ == '__main__':
   chipsize = 250
   chip = Base_Chip('CPW', chipsize, chipsize,label=False)
-  cp = CPW()
+  cp = CPW([[-100,-50],[-50,-50],[-50,0],[50,0],[50,-50],[0,-50]])
   print cp.length
   cp.add_launcher('beginning')
   cp.add_open('end')
