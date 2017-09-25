@@ -13,6 +13,7 @@ class RFHangers():
         - gapwidth = 20
         - radius = 100
         - squid = False, i.e. no squid at the end. Can be set to true
+        - number=4
     """
 
     def __init__(self, name, dict_hangers, squid = False):
@@ -39,10 +40,11 @@ class RFHangers():
 
         self.cell = cad.core.Cell('RF CELL')
 
-    def gen_full(self):
+    def gen_full(self,hangval=4,spacing=1800):
         """
-        Generate four RF hangers coupled to transmission line with lengths
-        length, length - 430, length - 830,length - 1.2e3
+        Generate <hangval=4> RF hangers coupled to transmission line with lengths
+        [length-400*i for i in range(number)] spaced <spacing=1800> apart
+	Alternatively, input an array of hanger lengths in hangval
         """
 
         x0 = self.pos[0]
@@ -50,8 +52,12 @@ class RFHangers():
         length = self.length
 
         # Hard coded values
-        spacing = 1.8e3
-        lengthvals = [length, length - 430, length - 830, length - 1.2e3]
+	if type(hangval)==int:
+        	lengthvals = [length-400*i for i in range(hangval)]
+	elif type(hangval)==list:
+		lengthvals = hangval
+	else:
+		raise ValueError("hangval has to be of type int or list") 
 
         for xx, value in enumerate(lengthvals):
             hanger = self.gen_hanger(value,(x0+xx*spacing,y0),self.squid)
@@ -125,26 +131,31 @@ class RFHangers():
                                 (x0+couplinglength+radius-gapwidth,y0-radius)]
             else:
                 print 'Adding SQUID'
+		squiddrain=25
+		squidx = 40/2
+		squidy = 2*squidx
+		squidjj = 1
+		squidlead = 3
                 hangerpoints_2 = [(x0+couplinglength+radius, y0-radius),
                             (x0+couplinglength+radius, y0-radius-restlength),
                             (x0+couplinglength+radius+50, y0-radius-restlength),
                             (x0+couplinglength+radius+50, y0-radius-restlength-gapwidth-100),
                             (x0+couplinglength+radius-gapwidth-centerwidth/2,y0-radius-restlength-gapwidth-100),
-                            (x0+couplinglength+radius-gapwidth-centerwidth/2,y0-radius-restlength-gapwidth),
-                            (x0+couplinglength+radius-gapwidth+25-centerwidth,y0-radius-restlength-gapwidth),
-                            (x0+couplinglength+radius-gapwidth+25-centerwidth,y0-radius-restlength-gapwidth-50),
-                            (x0+couplinglength+radius-gapwidth+25,y0-radius-restlength-gapwidth-50),
-                            (x0+couplinglength+radius-gapwidth+25,y0-radius-restlength-gapwidth+centerwidth),
-                            (x0+couplinglength+radius-gapwidth,y0-radius-restlength-gapwidth+centerwidth),
+                            (x0+couplinglength+radius-gapwidth-centerwidth/2,y0-radius-restlength-2*gapwidth-2*centerwidth),
+                            (x0+couplinglength+radius-gapwidth+25,y0-radius-restlength-2*gapwidth-2*centerwidth),
+                            (x0+couplinglength+radius-gapwidth+25,y0-radius-restlength-2*gapwidth-centerwidth),
+                            (x0+couplinglength+radius-gapwidth,y0-radius-restlength-2*gapwidth-centerwidth),
                             (x0+couplinglength+radius-gapwidth,y0-radius)]
                 hangerpoints_squid_top = [(x0+couplinglength+radius-gapwidth-centerwidth/2,y0-radius-restlength-gapwidth-100-100),
-                            (x0+couplinglength+radius-gapwidth-centerwidth/2,y0-radius-restlength-gapwidth-49),
-                            (x0+couplinglength+radius-gapwidth-centerwidth/2+28,y0-radius-restlength-gapwidth-49),
-                            (x0+couplinglength+radius-gapwidth-centerwidth/2+28,y0-radius-restlength-gapwidth-49-centerwidth),
-                            (x0+couplinglength+radius-gapwidth,y0-radius-restlength-gapwidth-49-centerwidth),
-                            (x0+couplinglength+radius-gapwidth,y0-radius-restlength-gapwidth-100),
-                            (x0+couplinglength+radius+50,y0-radius-restlength-gapwidth-100),
-                            (x0+couplinglength+radius+50,y0-radius-restlength-gapwidth-100-100)]
+(x0+couplinglength+radius-gapwidth-centerwidth/2,y0-radius-restlength-2*gapwidth-2*centerwidth-squidy),
+(x0+couplinglength+radius-gapwidth-centerwidth/2+squidx,y0-radius-restlength-2*gapwidth-2*centerwidth-squidy),
+(x0+couplinglength+radius-gapwidth-centerwidth/2+squidx,y0-radius-restlength-2*gapwidth-2*centerwidth+squidjj),
+(x0+couplinglength+radius-gapwidth-centerwidth/2+squidx+squidlead,y0-radius-restlength-2*gapwidth-2*centerwidth+squidjj),
+(x0+couplinglength+radius-gapwidth-centerwidth/2+squidx+squidlead,y0-radius-restlength-2*gapwidth-2*centerwidth-squidy-squidlead),
+(x0+couplinglength+radius-gapwidth,y0-radius-restlength-2*gapwidth-2*centerwidth-squidy-squidlead),
+(x0+couplinglength+radius-gapwidth,y0-radius-restlength-gapwidth-100),
+(x0+couplinglength+radius+50,y0-radius-restlength-gapwidth-100),
+(x0+couplinglength+radius+50,y0-radius-restlength-gapwidth-100-100)]
                 hanger_squid_top1 = cad.core.Boundary(hangerpoints_squid_top,layer=self.layer_top)
                 hanger_squid_top2 = cad.utils.reflect(hanger_squid_top1,'y',origin=(x0+couplinglength+radius-gapwidth-centerwidth/2,0))
 
