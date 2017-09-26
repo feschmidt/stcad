@@ -3,8 +3,6 @@ from stcad.source_dev.utilities import *
 from stcad.source_dev.meandering_line import MeanderingLine
 import gdsCAD as cad
 import copy
-import numpy as np
-import copy
 
 def sign(x):
   if x<0:
@@ -422,3 +420,72 @@ class SpiralInductor(cad.core.Cell):
         L = k1*mu_0*float(self.n)**2*da*1.e-6/(1+k2*rho)
         C_self = self.do*6.7e-15/40.
         print "f = " +str(1./np.sqrt(L*(C+C_self))/2./np.pi/1e9) +" GHz"
+        
+        
+class FourPointProbe(cad.core.Cell):
+    """
+    Creates a four point probe setup
+    """
+    def __init__(self, w=10, l=100, padw=300, lead=50, probew=5, negative=False, layer=1, name='4P'):   
+
+        super(FourPointProbe, self).__init__(name)
+        
+        # negative
+        points_neg = [(0,w),
+                    (l/2+lead,w),
+                    (l/2+lead,lead+padw),
+                    (l/2+lead+padw,lead+padw),
+                    (l/2+lead+padw,lead),
+                    (l/2+lead+w,lead),
+                    (l/2+lead+w,0),
+                    (l/2+probew,0),
+                    (l/2+probew,-lead),
+                    (l/2+probew+lead+padw,-lead),
+                    (l/2+probew+lead+padw,-lead-padw),
+                    (l/2+probew+lead,-lead-padw),
+                    (l/2+probew+lead,-lead-probew),
+                    (l/2,-lead-probew),
+                    (l/2,0),
+                    (0,0),
+                    (0,-lead-1.2*padw),
+                    (l/2+lead+1.2*padw,-lead-1.2*padw),
+                    (l/2+lead+1.2*padw,lead+1.2*padw),
+                    (0,lead+1.2*padw)]
+                    
+        # positive
+        points_pos = [(0,w),
+                    (l/2+lead,w),
+                    (l/2+lead,lead+padw),
+                    (l/2+lead+padw,lead+padw),
+                    (l/2+lead+padw,lead),
+                    (l/2+lead+w,lead),
+                    (l/2+lead+w,0),
+                    (l/2+probew,0),
+                    (l/2+probew,-lead),
+                    (l/2+probew+lead+padw,-lead),
+                    (l/2+probew+lead+padw,-lead-padw),
+                    (l/2+probew+lead,-lead-padw),
+                    (l/2+probew+lead,-lead-probew),
+                    (l/2,-lead-probew),
+                    (l/2,0),
+                    (0,0)]
+                    
+        if negative:
+            bound = cad.core.Boundary(points_neg,layer=layer)
+            labelloc = (l/2+lead,padw)
+        else:
+            bound = cad.core.Boundary(points_pos,layer=layer)
+            labelloc = (-l,padw)
+        bound2 = cad.utils.reflect(bound,'y')
+        
+        probecell = cad.core.Cell('4POINT')
+        probecell.add(bound)
+        probecell.add(bound2)
+
+        # Add label
+        labelcell = cad.core.Cell('LABEL')
+        label = cad.shapes.Label('l='+str(l)+'\nw='+str(w), 50, labelloc, layer=layer)
+        labelcell.add(label)
+        
+        self.add(probecell)
+        self.add(labelcell)

@@ -209,7 +209,7 @@ class Base_Chip(cad.core.Cell):
 
         self.add(marker)
     
-    def add_cross_single(self,pos=(0,0),dim=(600,40),clayer=5):
+    def add_cross_single(self,pos=(0,0),dim=(400,40),clayer=5):
         """
         Add single cross for dicing
         """
@@ -223,7 +223,7 @@ class Base_Chip(cad.core.Cell):
         self.add(marker)
 
     
-    def add_cross_corners(self,dim=(600,40),clayer=5):
+    def add_cross_corners(self,dim=(400,40),clayer=5):
         """
         Add crosses in the corners for dicing
         """
@@ -238,7 +238,7 @@ class Base_Chip(cad.core.Cell):
         markerf4 = cad.core.CellReference(marker, origin=(self.xdim/2,self.ydim/2))
         [self.add(toadd) for toadd in [markerf1, markerf2, markerf3, markerf4]]
         
-    def add_corners(self,dim=(600,60),clayer=5):
+    def add_corners(self,dim=(400,40),clayer=5):
         """
         Add corners for dicing
         """
