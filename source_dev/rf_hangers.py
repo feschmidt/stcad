@@ -34,6 +34,18 @@ class RFHangers():
 
         # Option to add squid at the end
         self.squid = squid
+        if squid==True:
+            self.squiddrain = self.dict_hangers['squiddrain']
+            self.squidx = self.dict_hangers['squidx']
+            self.squidy = self.dict_hangers['squidy']
+            self.squidjj = self.dict_hangers['squidjj']
+            self.squidlead = self.dict_hangers['squidlead']
+        elif squid=='Default':
+	        self.squiddrain = 25
+	        self.squidx = 40/2
+	        self.squidy = 2*self.squidx
+	        self.squidjj = 1
+	        self.squidlead = 3
 
         # hard coded values
         self.radius = 100
@@ -131,11 +143,11 @@ class RFHangers():
                                 (x0+couplinglength+radius-gapwidth,y0-radius)]
             else:
                 print 'Adding SQUID'
-		squiddrain=25
-		squidx = 40/2
-		squidy = 2*squidx
-		squidjj = 1
-		squidlead = 3
+		squiddrain=self.squiddrain
+		squidx = self.squidx
+		squidy = self.squidy
+		squidjj = self.squidjj
+		squidlead = self.squidlead
                 hangerpoints_2 = [(x0+couplinglength+radius, y0-radius),
                             (x0+couplinglength+radius, y0-radius-restlength),
                             (x0+couplinglength+radius+50, y0-radius-restlength),

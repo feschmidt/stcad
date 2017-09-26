@@ -28,7 +28,7 @@ class CPW(cad.core.Cell):
         pin = 1.,
         gap = 1.,
         layer = 1,
-        name=''):   
+        name='cpw'):   
 
 
         super(CPW, self).__init__(name)
