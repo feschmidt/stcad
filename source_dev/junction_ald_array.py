@@ -7,7 +7,7 @@ class Junctionchip():
     def __init__(self, name, dict_pads, dict_junctions, x0 = -100, y0 = -1700, 
         tlength = None):
         '''
-        Class for ALD JJs. These are vertical tunnel barriers with a two-step process.
+        Class for ALD JJs. These are vertical tunnel barriers with a two-step process. This file does not create bottom bond pads.
         '''
  
         self.name = name
@@ -20,7 +20,7 @@ class Junctionchip():
         self.layer_bottom = 1
         self.layer_top = 2
 
-    def gen_junctions(self):
+    def gen_junctions(self,doublepads=False):
         '''
         Consists of a centerline that spreads out to 6 individual junctions
         First creates bottom row of JJs, finally uses dc_24pin to generate the full 4x4 array
@@ -71,14 +71,22 @@ class Junctionchip():
                         [self.x0 + padwidth / 2. + xs,tripeak],
                         [self.x0 + padwidth + xs, self.y0 + padlength]]
             tri = cad.core.Boundary(tripoints)
-
-            if i==0:
-                ll = self.layer_bottom
+            
+            if doublepads==False:
+                if i==0:
+                    ll = self.layer_bottom
+                    self.padgroup[ll-1].add(pad_bot)
+                else:
+                    ll = self.layer_top
+                    self.padgroup[ll-1].add(pad_top)
             else:
-                ll = self.layer_top
+                if i==0:
+                    ll = self.layer_bottom
+                else:
+                    ll = self.layer_top
+                self.padgroup[ll-1].add(pad_top)
+                self.padgroup[ll-1].add(pad_bot)
             tri.layer = ll
-            self.padgroup[ll-1].add(pad_bot)
-            self.padgroup[ll-1].add(pad_top)
             self.padgroup[ll-1].add(tri)
 
             if i!=0:

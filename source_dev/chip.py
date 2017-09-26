@@ -209,13 +209,13 @@ class Base_Chip(cad.core.Cell):
 
         self.add(marker)
     
-    def add_cross_single(self,pos=(0,0),dim=(600,40)):
+    def add_cross_single(self,pos=(0,0),dim=(600,40),clayer=5):
         """
-        Add crosses for dicing
+        Add single cross for dicing
         """
         marker = cad.core.Cell('CROSS')
-        marker10 = cad.shapes.Rectangle((-dim[0]/2,-dim[1]/2),(dim[0]/2,dim[1]/2),layer=1)
-        marker20 = cad.shapes.Rectangle((-dim[1]/2,-dim[0]/2),(dim[1]/2,dim[0]/2),layer=1)
+        marker10 = cad.shapes.Rectangle((-dim[0]/2,-dim[1]/2),(dim[0]/2,dim[1]/2),layer=clayer)
+        marker20 = cad.shapes.Rectangle((-dim[1]/2,-dim[0]/2),(dim[1]/2,dim[0]/2),layer=clayer)
         marker1 = cad.utils.translate(marker10, (pos[0],pos[1]))
         marker2 = cad.utils.translate(marker20, (pos[0],pos[1]))
         marker.add(marker1)
@@ -223,19 +223,34 @@ class Base_Chip(cad.core.Cell):
         self.add(marker)
 
     
-    def add_cross_corners(self,dim=(600,40)):
+    def add_cross_corners(self,dim=(600,40),clayer=5):
         """
-        Add crosses for dicing
+        Add crosses in the corners for dicing
         """
         marker = cad.core.Cell('CROSS')
-        marker1 = cad.shapes.Rectangle((-dim[0]/2,-dim[1]/2),(dim[0]/2,dim[1]/2),layer=1)
-        marker2 = cad.shapes.Rectangle((-dim[1]/2,-dim[0]/2),(dim[1]/2,dim[0]/2),layer=1)
+        marker1 = cad.shapes.Rectangle((-dim[0]/2,-dim[1]/2),(dim[0]/2,dim[1]/2),layer=clayer)
+        marker2 = cad.shapes.Rectangle((-dim[1]/2,-dim[0]/2),(dim[1]/2,dim[0]/2),layer=clayer)
         marker.add(marker1)
         marker.add(marker2)
         markerf1 = cad.core.CellReference(marker, origin=(-self.xdim/2,-self.ydim/2))
         markerf2 = cad.core.CellReference(marker, origin=(-self.xdim/2,self.ydim/2))
         markerf3 = cad.core.CellReference(marker, origin=(self.xdim/2,-self.ydim/2))
         markerf4 = cad.core.CellReference(marker, origin=(self.xdim/2,self.ydim/2))
+        [self.add(toadd) for toadd in [markerf1, markerf2, markerf3, markerf4]]
+        
+    def add_corners(self,dim=(600,60),clayer=5):
+        """
+        Add corners for dicing
+        """
+        marker = cad.core.Cell('CROSS')
+        marker1 = cad.shapes.Rectangle((0,0),(dim[0],dim[1]),layer=clayer)
+        marker2 = cad.shapes.Rectangle((0,0),(dim[1],dim[0]),layer=clayer)
+        marker.add(marker1)
+        marker.add(marker2)
+        markerf1 = cad.core.CellReference(marker, origin=(-self.xdim/2,-self.ydim/2))
+        markerf2 = cad.core.CellReference(marker, origin=(-self.xdim/2,self.ydim/2),rotation=270)
+        markerf3 = cad.core.CellReference(marker, origin=(self.xdim/2,-self.ydim/2),rotation=90)
+        markerf4 = cad.core.CellReference(marker, origin=(self.xdim/2,self.ydim/2),rotation=180)
         [self.add(toadd) for toadd in [markerf1, markerf2, markerf3, markerf4]]
 
     '''       
