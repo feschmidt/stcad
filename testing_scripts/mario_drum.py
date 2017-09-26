@@ -1,6 +1,6 @@
 import numpy as np
 from stcad.source_dev.chip import Base_Chip
-from stcad.source_dev.drum import Drum
+from stcad.source_dev.objects import Drum
 import gdsCAD as cad
 
 chipsize = 50
