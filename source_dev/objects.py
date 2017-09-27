@@ -475,7 +475,7 @@ class FourPointProbe(cad.core.Cell):
             labelloc = (l/2+lead,padw)
         else:
             bound = cad.core.Boundary(points_pos,layer=layer)
-            labelloc = (-l,padw)
+            labelloc = (-100,padw)
         bound2 = cad.utils.reflect(bound,'y')
         
         probecell = cad.core.Cell('4POINT')
