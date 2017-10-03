@@ -130,12 +130,12 @@ class RFHangers():
                             (x0+couplinglength+radius-gapwidth,y0-radius)]
                             
         if coupling == 'capacitive':
-            hangerpoints_1 = [(x0,y0),
+            hangerpoints_1 = [(x0 - gapwidth,y0),
                             (x0 + couplinglength,y0),
                             (x0 + couplinglength,y0-gapwidth),
                             (x0 + gapwidth, y0-gapwidth),
                             (x0 + gapwidth, y0-gapwidth-centerwidth/2),
-                            (x0, y0-gapwidth-centerwidth/2)]
+                            (x0 - gapwidth, y0-gapwidth-centerwidth/2)]
             if squid==False:
                 hangerpoints_2 = [(x0+couplinglength+radius, y0-radius),
                                 (x0+couplinglength+radius, y0-radius-restlength-gapwidth),
