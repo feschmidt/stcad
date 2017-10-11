@@ -1,35 +1,41 @@
 import numpy as np
 from stcad.source_dev.chip import Base_Chip
 from stcad.source_dev.utilities import *
+from stcad.source_dev.objects import *
 import shapely
 import gdsCAD as cad
 
 
+
 chipsize = 200
-chip = Base_Chip('test', chipsize, chipsize,label=False)
+chip = Base_Chip('waffle', chipsize, chipsize,label=False)
 
-layer_sacrificial_holes = 2
-width = 150
-chip.add(Hexagon(width = width,layer = 1))
-margin = 10
-n_width_holes = 7
-hole_diameter = 4
-if n_width_holes%2==0:
-    raise ValueError("the width should contain an odd number of holes") 
-half_height = np.sqrt(width**2/4.-width**2/16.)-margin
-pitch = (width-2*margin)/(n_width_holes)
-pitch_vertical = half_height/float((n_width_holes+1)/2-1)
+base_width = 150
+base_lead_length = 12
+base_line_width = 2
+ground_length = 5
+n_holes = 13
+base_hole_diameter = 3
+sacrificial_width_overlap = 0.5
+side_support = 4
+release_hole_diameter = 1
 
-for i in range((n_width_holes+1)/2):
-	x_array = np.linspace(-(((n_width_holes+1)/2-1)*pitch-i*pitch/2.),((n_width_holes+1)/2-1)*pitch-i*pitch/2.,n_width_holes-i)
-	y = i*pitch_vertical
-	for x in x_array:
-		chip.add(cad.shapes.Disk((x,y), hole_diameter,layer =layer_sacrificial_holes))
-for i in range(1,(n_width_holes+1)/2):
-	x_array = np.linspace(-(((n_width_holes+1)/2-1)*pitch-i*pitch/2.),((n_width_holes+1)/2-1)*pitch-i*pitch/2.,n_width_holes-i)
-	y = -i*pitch_vertical
-	for x in x_array:
-		chip.add(cad.shapes.Disk((x,y), hole_diameter,layer =layer_sacrificial_holes))
-
-
-chip.save_to_gds(show=True, save=False,loc='')
+waffle = WaffleCapacitor(base_width, 
+        base_lead_length, 
+        base_line_width, 
+        ground_length, 
+        n_holes, 
+        base_hole_diameter, 
+        sacrificial_width_overlap, 
+        side_support, 
+        release_hole_diameter, 
+        base_layer =1, 
+        base_hole_layer =4, 
+        sacrificial_layer =2, 
+        sacrificial_hole_layer =5, 
+        top_layer =3, 
+        top_hole_layer =6,
+        ground = True)
+print waffle.capacitance(gap=50e-9)
+chip.add(waffle)
+chip.save_to_gds(show=False, save=True,loc='')

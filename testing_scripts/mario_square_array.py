@@ -20,6 +20,7 @@ for i in range(N):
     x = x_i+i*dx
     y = y_i+j*dy
     points=[(x,y), (x+square_size,y), (x+square_size,y+square_size), (x,y+square_size)]
-    chip.add(cad.core.Boundary(points))
+    square = cad.core.Boundary(points,layer=3)
+    chip.add(square)
 
 chip.save_to_gds(show=True, save=True,loc='')
