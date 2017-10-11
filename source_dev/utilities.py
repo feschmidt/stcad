@@ -27,6 +27,7 @@ def poly_to_shapely(polygon):
 
 	return shapely_polygon
 
+
 def make_rounded_edges(rectangle, radius, dict_corners):
 	
 	"""
@@ -124,6 +125,11 @@ def join_polygons(polygon1,polygon2,format_shapely=False):
 
     return out
 
+def buffer_polygon(polygon,amount):
+
+	shapely_polygon = poly_to_shapely(polygon)
+	return shapely_to_poly(shapely_polygon.buffer(amount))
+
 def xor_polygons(polygon1,polygon2,format_shapely=False):
     """
     Inputs are:
@@ -135,7 +141,7 @@ def xor_polygons(polygon1,polygon2,format_shapely=False):
     if format_shapely == False:
     	shapely_polygon1 = poly_to_shapely(polygon1)
     	shapely_polygon2 = poly_to_shapely(polygon2)
-    	xor_poly = shapely_polygon1.symmetric_difference(shapely_polygon2)
+    	xor_poly = shapely_polygon1.difference(shapely_polygon2)
     	out = shapely_to_poly(xor_poly)
 
     else:
@@ -166,33 +172,25 @@ def correct_for_multipol(pol):
         pol = pol.geoms[max_area_id]
     return pol
 
-class Hexagon(cad.core.Cell):
-	"""docstring for Hexagon"""
-	def __init__(self, width, layer = cad.core.default_layer,name=''):
-		super(Hexagon, self).__init__(name)
-		self.width = width
-		self.name = name
-		self.layer = layer
-		hex_width = width
-
-		points = [[-hex_width/2.,0],\
-			[-hex_width/4.,np.sqrt(hex_width**2/4.-hex_width**2/16.)],\
-			[+hex_width/4.,np.sqrt(hex_width**2/4.-hex_width**2/16.)],\
-			[+hex_width/2.,0],\
-			[+hex_width/4.,-np.sqrt(hex_width**2/4.-hex_width**2/16.)],\
-			[-hex_width/4.,-np.sqrt(hex_width**2/4.-hex_width**2/16.)]]
-		self.add(cad.core.Boundary(points,layer = self.layer))
 
 def angle(vec):
-    return np.arctan2(vec[1],vec[0])
+	return np.arctan2(vec[1],vec[0])
 
 def line_polygon(start, end, line_width):
 	e=np.array(end)
 	s=np.array(start)
 	ang = angle(e-s)
 	vec = float(line_width)/2.*np.array([-np.sin(ang),np.cos(ang)])
-	print ang
 	return cad.core.Boundary(np.array([start+vec,end+vec,end-vec,start-vec]))
+
+def perpendicular_line(a,b,length,line_width):
+	a=np.array(a)
+	b=np.array(b)
+	ang = angle(b-a)
+	vec = float(length)*np.array([-np.sin(ang),np.cos(ang)])
+	start = (b+a)/2
+	end = start + vec
+	return line_polygon(start, end, line_width)
 
 def double_line_polygon(start, end, line_width,seperation):
 	e=np.array(end)
@@ -224,6 +222,34 @@ def double_arc_polygon(center,radius, line_width,seperation, final_angle = 0,ini
     arc_2 = arc_polygon(center,radius+seperation/2.+line_width/2., line_width, final_angle,initial_angle, number_of_points)
     return [arc_1,arc_2]
 
+def probe_pad(position, orientation,layer = 1, taper_start_width = 100, taper_end_width = 4, taper_length = 100, line_length = 20, line_width = None):
+	if line_width == None:
+		line_width = taper_end_width
+	points = [[-line_width/2.,0],\
+	[-line_width/2.,line_length],\
+	[-taper_end_width/2.,line_length],\
+	[-taper_start_width/2.,line_length+taper_length],\
+	[taper_start_width/2.,line_length+taper_length],\
+	[taper_end_width/2.,line_length],\
+	[line_width/2.,line_length],\
+	[line_width/2.,0]]
+	shape = cad.core.Boundary(np.array(points),layer)
 
-if __name__ == '__main__':
-	print arc_polygon([0,0],10, 3,number_of_points = 5)
+	if orientation == 'up':
+		pass
+	elif orientation == 'right':
+		shape.rotate(90.)
+	elif orientation == 'left':
+		shape.rotate(-90.)
+	elif orientation== 'down':
+		shape.rotate(180.)
+	else:
+		ValueError("First argument should be either 'up', 'right', 'left' or 'down'")
+
+	shape.translate(position)	
+
+	return shape
+
+
+# if __name__ == '__main__':
+# 	probe_bad([20,20],'down').show()
