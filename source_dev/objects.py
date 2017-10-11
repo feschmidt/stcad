@@ -297,6 +297,8 @@ class Drum(cad.core.Cell):
                     hole_angle = 45,
                     hole_distance_to_center = 4.5,
                     hole_distance_to_edge = 0.5,
+                    split_electrode = False,
+                    electrode_splitting = 0.25,
                     name = ''):
         super(Drum, self).__init__(name)
         hole_radius = (head_radius-hole_distance_to_edge-hole_distance_to_center)/2.
@@ -359,12 +361,7 @@ class Drum(cad.core.Cell):
 
 
 
-        ##################################
-        # Electrode
-        ##################################
 
-        electrode = cad.shapes.Disk((0,0), electrode_radius, layer=base_layer) 
-        # electrode_tail = cad.core.Path([[-outer_radius,0],[outer_radius,0]], cable_width,layer = base_layer)
 
 
 
@@ -373,17 +370,32 @@ class Drum(cad.core.Cell):
         ##################################
 
 
+        cad.core.default_layer=sacrificial_layer
         sacrificial_drum = cad.shapes.Disk((0,0), head_radius, layer=sacrificial_layer) 
         sacrificial_tail = cad.core.Path([[-head_radius-sacrificial_tail_length,0],[head_radius+sacrificial_tail_length,0]],\
          sacrificial_tail_width,layer = sacrificial_layer)
 
+        ##################################
+        # Electrode
+        ##################################
+
+        cad.core.default_layer=base_layer
+        if split_electrode == False:
+            electrode = cad.shapes.Disk((0,0), electrode_radius, layer=base_layer) 
+            self.add([electrode])
+        else:
+            disk = cad.shapes.Disk((0,0), electrode_radius, layer=base_layer) 
+            square_left = cad.shapes.Rectangle([-electrode_radius,electrode_radius],[+electrode_splitting/2.,-electrode_radius])
+            square_right = cad.shapes.Rectangle([+electrode_radius,electrode_radius],[-electrode_splitting/2.,-electrode_radius])
+            
+            self.add([xor_polygons(disk,square_left)])
+            self.add([xor_polygons(disk,square_right)])
 
         ##################################
         # Add all components
         ##################################
 
         self.add([holy_section_of_head,holy_section_of_head.copy().reflect('x'), drum_head_inner,drum_head_outer,support_bottom,support_top])
-        self.add([electrode])
         # self.add([electrode_tail])
 
         self.add([sacrificial_tail,sacrificial_drum])
@@ -401,7 +413,6 @@ class CPW(cad.core.Cell):
 
 
         super(CPW, self).__init__(name)
-        cad.core.default_layer=layer
         points = np.array(points)
         self.points = points
         self.length = 0.
@@ -520,6 +531,7 @@ class SpiralInductor(cad.core.Cell):
         base_layer = 1,
         sacrificial_layer = 2,
         top_layer = 3,
+        kinetic_inductance = 0.,
         name=''):   
 
 
@@ -528,9 +540,9 @@ class SpiralInductor(cad.core.Cell):
         n = coil_number
         self.do = do
         self.n = n
+        self.line_width = line_width
         pitch = line_width+spacing
         self.di = do-2.*pitch*n
-
 
         ##################
         # Spiral
@@ -549,7 +561,7 @@ class SpiralInductor(cad.core.Cell):
         points.append([do-(n-1)*pitch,-do/2.])
         points.append([do/2.,-do/2.])
         spiral.add(cad.core.Path(points, line_width,layer = top_layer))
-
+        self.length = length_path(points)
 
       # ##################
       # # Base layer
@@ -558,9 +570,10 @@ class SpiralInductor(cad.core.Cell):
 
         overlap_square = cad.shapes.Rectangle((do/2.-overlap_square_width/2.,-do/2.-overlap_square_width/2.),\
          (do/2.+overlap_square_width/2.,-do/2.+overlap_square_width/2.), layer = base_layer)
-        tail = cad.shapes.Rectangle((-tail_length,-do/2.+line_width),\
-         (do/2.,-do/2.-line_width), layer = base_layer)
+        tail = cad.shapes.Rectangle((-tail_length,-do/2.+line_width/2.),\
+         (do/2.,-do/2.-line_width/2.), layer = base_layer)
 
+        self.length += do/2.+tail_length
 
       # ##################
       # # Sacrificial layer
@@ -573,30 +586,19 @@ class SpiralInductor(cad.core.Cell):
 
         self.add([spiral,overlap_square,tail,sacrificial])
 
-    def inductance(self):
-
         k1 = 2.34
         k2 = 2.75
         rho = (self.do-self.di)/(self.do+self.di)
         da = 0.5*(self.do+self.di)
         mu_0 = 4.*np.pi*1.e-7
-        L = k1*mu_0*float(self.n)**2*da*1.e-6/(1+k2*rho)
-        C = self.do*6.7e-15/40.
-        print "L = " +str(L*1.e9) +" nH"
-        print "C = " +str(C*1.e15) +" fF"
-        print "(self-resonance) f = " +str(1./np.sqrt(L*C)/2./np.pi/1e9) +" GHz"
-
+        self.Lg = k1*mu_0*float(self.n)**2*da*1.e-6/(1+k2*rho)
+        self.C = self.do*6.7e-15/40.
+        self.Lk = self.length/self.line_width*kinetic_inductance
+        self.self_resonance = 1./np.sqrt((self.Lk+self.Lg)*self.C)/2./np.pi
 
     def resonance(self, C):
 
-        k1 = 2.34
-        k2 = 2.75
-        rho = (self.do-self.di)/(self.do+self.di)
-        da = 0.5*(self.do+self.di)
-        mu_0 = 4.*np.pi*1.e-7
-        L = k1*mu_0*float(self.n)**2*da*1.e-6/(1+k2*rho)
-        C_self = self.do*6.7e-15/40.
-        print "f = " +str(1./np.sqrt(L*(C+C_self))/2./np.pi/1e9) +" GHz"
+        return 1./np.sqrt((self.Lk+self.Lg)*(self.C+C))/2./np.pi
         
         
 class FourPointProbe(cad.core.Cell):

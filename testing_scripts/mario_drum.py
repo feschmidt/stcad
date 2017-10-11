@@ -19,6 +19,7 @@ inductor = Drum(base_layer = 1,
 					hole_angle = 45,
 					hole_distance_to_center = 4.5,
 					hole_distance_to_edge = 0.5,
+					split_electrode = True,
 					name = '')
 chip.add_component(inductor, (0,0))
 chip.save_to_gds(show=False, save=True,loc='')
