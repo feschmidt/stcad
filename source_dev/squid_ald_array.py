@@ -20,7 +20,7 @@ class SQUIDchip():
         self.layer_bottom = 1
         self.layer_top = 2
 
-    def gen_junctions(self, dim = (50,50)):
+    def gen_junctions(self, dim = (50,50), doublepads=False):
         '''
         Consists of a centerline that spreads out to 6 individual SQUIDs
         First creates bottom row of JJs, finally uses dc_24pin to generate the full 4x4 array
@@ -81,6 +81,8 @@ class SQUIDchip():
 
             if i==0:
                 ll = self.layer_bottom
+                if doublepads==False:
+                    self.padgroup[ll-1].add(pad_bot)
             else:
                 ll = self.layer_top
                 squid_hor = cad.core.Path([[xs-0.6*dim[0],tripeak+source+dim[1]+cwidth/2],
@@ -89,12 +91,15 @@ class SQUIDchip():
                 squid_ver = cad.core.Path([[xs,tripeak+source+dim[1]+cwidth/2],
                                     [xs,tripeak+source+dim[1]+cwidth/2+drain]],
                                     cwidth,layer=self.layer_bottom)
+                if doublepads==False:
+                    self.padgroup[ll-1].add(pad_top)
             for toadd in [tri, squid_ver, squid_hor]:
                 if toadd==tri:
                     toadd.layer = ll
                 self.padgroup[ll-1].add(toadd)
-            self.padgroup[ll-1].add(pad_bot)
-            self.padgroup[ll-1].add(pad_top)
+            if doublepads==True:
+                self.padgroup[ll-1].add(pad_bot)
+                self.padgroup[ll-1].add(pad_top)
 
             if i!=0:
                 self.padgroup[ll-1].add(squid_left)

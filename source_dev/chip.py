@@ -208,23 +208,52 @@ class Base_Chip(cad.core.Cell):
                 marker.add(vmarks)
 
         self.add(marker)
-    '''           
-    def chip_not(self):
+    
+    def add_cross_single(self,pos=(0,0),dim=(400,40),clayer=5):
         """
-        *** BROKEN
-        Negate everything on this chip
+        Add single cross for dicing
         """
-        #n_box = cad.core.Cell('NOT')
-        #not_box = cad.core.CellReference(n_box)
-        box = gdspy.Rectangle((-self.xdim/2, -self.ydim/2), (self.xdim/2, self.ydim/2))
-        #not_box.add(box)
-        original = cad.core.CellReference(self)
-        not_chip = gdspy.fast_boolean(box, original, 'not')
-        result_cell = gdspy.Cell('NOT_CELL')
-        result_cell.add(not_chip)
-        self = result_cell
-    '''
-       
+        marker = cad.core.Cell('CROSS')
+        marker10 = cad.shapes.Rectangle((-dim[0]/2,-dim[1]/2),(dim[0]/2,dim[1]/2),layer=clayer)
+        marker20 = cad.shapes.Rectangle((-dim[1]/2,-dim[0]/2),(dim[1]/2,dim[0]/2),layer=clayer)
+        marker1 = cad.utils.translate(marker10, (pos[0],pos[1]))
+        marker2 = cad.utils.translate(marker20, (pos[0],pos[1]))
+        marker.add(marker1)
+        marker.add(marker2)
+        self.add(marker)
+
+    
+    def add_cross_corners(self,dim=(400,40),clayer=5):
+        """
+        Add crosses in the corners for dicing
+        """
+        marker = cad.core.Cell('CROSS')
+        marker1 = cad.shapes.Rectangle((-dim[0]/2,-dim[1]/2),(dim[0]/2,dim[1]/2),layer=clayer)
+        marker2 = cad.shapes.Rectangle((-dim[1]/2,-dim[0]/2),(dim[1]/2,dim[0]/2),layer=clayer)
+        marker.add(marker1)
+        marker.add(marker2)
+        markerf1 = cad.core.CellReference(marker, origin=(-self.xdim/2,-self.ydim/2))
+        markerf2 = cad.core.CellReference(marker, origin=(-self.xdim/2,self.ydim/2))
+        markerf3 = cad.core.CellReference(marker, origin=(self.xdim/2,-self.ydim/2))
+        markerf4 = cad.core.CellReference(marker, origin=(self.xdim/2,self.ydim/2))
+        [self.add(toadd) for toadd in [markerf1, markerf2, markerf3, markerf4]]
+        
+    def add_corners(self,dim=(400,40),clayer=5):
+        """
+        Add corners for dicing
+        """
+        marker = cad.core.Cell('CROSS')
+        marker1 = cad.shapes.Rectangle((0,0),(dim[0],dim[1]),layer=clayer)
+        marker2 = cad.shapes.Rectangle((0,0),(dim[1],dim[0]),layer=clayer)
+        marker.add(marker1)
+        marker.add(marker2)
+        markerf1 = cad.core.CellReference(marker, origin=(-self.xdim/2,-self.ydim/2))
+        markerf2 = cad.core.CellReference(marker, origin=(-self.xdim/2,self.ydim/2),rotation=270)
+        markerf3 = cad.core.CellReference(marker, origin=(self.xdim/2,-self.ydim/2),rotation=90)
+        markerf4 = cad.core.CellReference(marker, origin=(self.xdim/2,self.ydim/2),rotation=180)
+        [self.add(toadd) for toadd in [markerf1, markerf2, markerf3, markerf4]]
+
+    '''       
     def add_TUlogo(self, pos=(0,100)):
         """
         *** BROKEN
@@ -234,4 +263,4 @@ class Base_Chip(cad.core.Cell):
         logo = cad.core.DxfImport('examples/cad_files/TU_Delft_logo_Black.dxf',scale=1.0)
         #logo.layer=self.layer_label
         self.add(logo)
-    
+    '''
