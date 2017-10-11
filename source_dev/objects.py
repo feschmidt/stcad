@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.constants import epsilon_0
 from stcad.source_dev.utilities import *
 from stcad.source_dev.meandering_line import MeanderingLine
 import gdsCAD as cad
@@ -20,6 +21,160 @@ def angle(vec):
 def norm(vec):
     return np.sqrt(vec[0]**2+vec[1]**2)
 
+class WaffleCapacitor(cad.core.Cell):
+    """docstring for WaffleCapacitor"""
+    def __init__(self,base_width, 
+        base_lead_length, 
+        base_line_width, 
+        ground_length, 
+        n_holes, 
+        base_hole_diameter, 
+        sacrificial_width_overlap, 
+        side_support, 
+        release_hole_diameter, 
+        ground = True,
+        base_layer =1, 
+        base_hole_layer =4, 
+        sacrificial_layer =2, 
+        sacrificial_hole_layer =5, 
+        top_layer =3, 
+        top_hole_layer =6,
+        name = ''):
+        super(WaffleCapacitor, self).__init__(name)
+        self.base_width = base_width
+        self.base_lead_length = base_lead_length
+        self.base_line_width = base_line_width
+        self.ground_length = ground_length
+        self.n_holes = n_holes
+        self.base_hole_diameter = base_hole_diameter
+        self.sacrificial_width_overlap = sacrificial_width_overlap
+        self.side_support = side_support
+        self.release_hole_diameter = release_hole_diameter
+        self.base_layer = base_layer
+        self.base_hole_layer = base_hole_layer
+        self.sacrificial_layer = sacrificial_layer
+        self.sacrificial_hole_layer = sacrificial_hole_layer
+        self.top_layer = top_layer
+        self.top_hole_layer = top_hole_layer
+
+        # base layer
+        base_hex = Hexagon(width = base_width,layer = base_layer)
+        hex_width = base_width+base_lead_length*2.
+
+
+        if ground:
+            base_hex.add_leads_on_sides(base_lead_length,base_line_width)
+            points = [[-hex_width/2.+base_lead_length*np.sin(np.pi/6),base_lead_length*np.cos(np.pi/6)],\
+                        [-hex_width/4.,np.sqrt(hex_width**2/4.-hex_width**2/16.)],\
+                        [+hex_width/4.,np.sqrt(hex_width**2/4.-hex_width**2/16.)],\
+                        [+hex_width/2.,0],\
+                        [+hex_width/4.,-np.sqrt(hex_width**2/4.-hex_width**2/16.)],\
+                        [-hex_width/4.,-np.sqrt(hex_width**2/4.-hex_width**2/16.)],
+                        [-hex_width/2.+base_lead_length*np.sin(np.pi/6),-base_lead_length*np.cos(np.pi/6)],
+                        [-hex_width/2.-ground_length,-base_lead_length*np.cos(np.pi/6)],
+                        [-hex_width/2.-ground_length,-hex_width/2.-ground_length],
+                        [+hex_width/2.+ground_length,-hex_width/2.-ground_length],
+                        [+hex_width/2.+ground_length,+hex_width/2.+ground_length],
+                        [-hex_width/2.-ground_length,+hex_width/2.+ground_length],
+                        [-hex_width/2.-ground_length,+base_lead_length*np.cos(np.pi/6)],]
+            self.add(cad.core.Boundary(points))
+        else:
+            base_hex.add_lead_on_1_side(base_lead_length,base_line_width)
+
+
+        self.add(base_hex)
+
+        # base holes
+        base_margin = base_width/(n_holes)/np.sqrt(2)
+        base_holes = hex_array_of_holes(base_margin,base_width,n_holes,base_hole_diameter,base_hole_layer)
+        self.n_base_holes = base_holes.n
+        self.add(base_holes)
+
+        # sacrificial layer
+        sacrificial_width = base_width+2*sacrificial_width_overlap
+        sacrificial_hex = Hexagon(width = sacrificial_width,layer = sacrificial_layer)
+        if ground:
+            sacrificial_hex.add_leads_on_sides(base_lead_length,base_line_width+2*sacrificial_width_overlap)
+        else:
+            sacrificial_hex.add_lead_on_1_side(base_lead_length,base_line_width+2*sacrificial_width_overlap)
+        self.add(sacrificial_hex)
+
+        # sacrificial holes
+        sacrificial_holes = hex_array_of_holes(base_margin,base_width,n_holes,base_hole_diameter-2*sacrificial_width_overlap,sacrificial_hole_layer)
+        self.n_sacrificial_holes = sacrificial_holes.n
+        self.add(sacrificial_holes)
+
+        # top layer
+        top_width =  sacrificial_width+2*side_support
+        sacrificial_hex = Hexagon(width =top_width,layer = top_layer)
+        self.add(sacrificial_hex)
+        cad.core.default_layer=top_layer
+        self.add(line_polygon([-top_width/2.+base_line_width,0], [-hex_width/2.-ground_length,0], base_line_width))
+
+        # top holes
+        top_holes = hex_array_of_holes(base_margin/2.,base_width,2*n_holes+1,release_hole_diameter,top_hole_layer, skip_some=True)
+        self.n_top_holes = top_holes.n
+        self.add(top_holes)
+
+    def capacitance(self,gap):
+        A = 3.*np.sqrt(3)/2.*float(self.base_width*1.e-6)**2
+        A -=self.n_base_holes*np.pi*(float(self.base_hole_diameter*1.e-6)/2.)**2
+        A -=self.n_top_holes*np.pi*(float(self.release_hole_diameter*1.e-6)/2.)**2
+
+        return epsilon_0*A/gap
+
+class hex_array_of_holes(cad.core.Cell):
+    """docstring for ClassName"""
+    def __init__(self, margin, base_width,n_holes, hole_diameter, layer, skip_some = False, name=''):
+        super(hex_array_of_holes, self).__init__(name)
+
+        self.n = 0
+
+        if n_holes%2==0:
+            raise ValueError("the width should contain an odd number of holes") 
+        half_height = np.sqrt(base_width**2/4.-base_width**2/16.)-margin
+        pitch_vertical = half_height/float((n_holes+1)/2-1)
+        if skip_some == False:
+            for i in range((n_holes+1)/2):
+                y = i*pitch_vertical
+                x_start = (base_width)/2.-margin*2./np.sqrt(3)-(y)/np.tan(np.pi/3.)
+                x_array = np.linspace(-x_start,x_start,n_holes-i)
+                for x in x_array:
+                    self.add(cad.shapes.Disk((x,y), hole_diameter/2.,layer =layer))
+                    self.n +=1
+            for i in range(1,(n_holes+1)/2):
+                y = -i*pitch_vertical
+                x_start = (base_width)/2.-margin-(-y)/np.tan(np.pi/3.)
+                x_array = np.linspace(-x_start,x_start,n_holes-i)
+                for x in x_array:
+                    self.add(cad.shapes.Disk((x,y), hole_diameter/2.,layer =layer))
+                    self.n +=1
+        else:
+            for i in range((n_holes+1)/2):
+                y = i*pitch_vertical
+                x_start = (base_width)/2.-margin*2./np.sqrt(3)-(y)/np.tan(np.pi/3.)
+                x_array = np.linspace(-x_start,x_start,n_holes-i)
+                j = 0
+                for x in x_array:
+                    if i%2==0 and (j+1)%2==0:
+                        pass
+                    else:
+                        self.add(cad.shapes.Disk((x,y), hole_diameter/2.,layer =layer))
+                        self.n +=1
+                    j+=1
+            for i in range(1,(n_holes+1)/2):
+                y = -i*pitch_vertical
+                x_start = (base_width)/2.-margin-(-y)/np.tan(np.pi/3.)
+                x_array = np.linspace(-x_start,x_start,n_holes-i)
+                j = 0
+                for x in x_array:
+                    if i%2==0 and (j+1)%2==0:
+                        pass
+                    else:
+                        self.add(cad.shapes.Disk((x,y), hole_diameter/2.,layer =layer))
+                        self.n +=1
+                    j+=1
+
 
 class MeanderingLine(cad.core.Cell):
     """docstring for MeanderingLine"""
@@ -27,7 +182,7 @@ class MeanderingLine(cad.core.Cell):
         points = [[-100,0],[-100,-50],[-50,-50],[-50,0],[50,0],[50,-50],[0,-50]],
         turn_radius = 16.,
         line_width = 10.,
-        layer = 1,
+        layer = None,
         path = False,
         name=''):   
 
@@ -39,11 +194,9 @@ class MeanderingLine(cad.core.Cell):
           if x>0:
             return 1.
 
-        def angle(vec):
-            return np.arctan2(vec[1],vec[0])*180./np.pi
-
         super(MeanderingLine, self).__init__(name)
-        cad.core.default_layer=layer
+        if layer != None:
+            cad.core.default_layer=layer
 
         if path == False:
             # i.e. make a boundary
@@ -89,12 +242,10 @@ class MeanderingLine(cad.core.Cell):
                 curve_center = p_after + p_before - p
                 angle_i = angle(p_before - curve_center)
                 angle_delta = angle(p_after - curve_center)-angle_i
-                print angle_i,angle_delta
                 if angle_delta < -180.:
                     angle_delta+=360.
                 if angle_delta > 180.:
                     angle_delta-=360.
-                print angle_i,angle_delta
                 sec.append(p_before)
                 line.add(cad.core.Path(sec, line_width))
                 line.add(cad.shapes.Circle(curve_center, turn_radius, line_width,\
@@ -105,6 +256,31 @@ class MeanderingLine(cad.core.Cell):
 
             self.add([line])
 
+class Hexagon(cad.core.Cell):
+    """docstring for Hexagon"""
+    def __init__(self, width, layer = cad.core.default_layer,name=''):
+        super(Hexagon, self).__init__(name)
+        self.width = width
+        self.name = name
+        self.layer = layer
+        hex_width = width
+
+        self.points = [[-hex_width/2.,0],\
+            [-hex_width/4.,np.sqrt(hex_width**2/4.-hex_width**2/16.)],\
+            [+hex_width/4.,np.sqrt(hex_width**2/4.-hex_width**2/16.)],\
+            [+hex_width/2.,0],\
+            [+hex_width/4.,-np.sqrt(hex_width**2/4.-hex_width**2/16.)],\
+            [-hex_width/4.,-np.sqrt(hex_width**2/4.-hex_width**2/16.)]]
+        self.add(cad.core.Boundary(self.points,layer = self.layer))
+
+    def add_leads_on_sides(self,lead_length,line_width):
+        cad.core.default_layer = self.layer
+        for i in range(-1,5):
+            self.add(perpendicular_line(self.points[i],self.points[i+1],lead_length,line_width))
+
+    def add_lead_on_1_side(self,lead_length,line_width):
+        cad.core.default_layer = self.layer
+        self.add(perpendicular_line(self.points[0],self.points[1],lead_length,line_width))
 
 
 class Drum(cad.core.Cell):
@@ -190,7 +366,7 @@ class Drum(cad.core.Cell):
         ##################################
 
         electrode = cad.shapes.Disk((0,0), electrode_radius, layer=base_layer) 
-        electrode_tail = cad.core.Path([[-outer_radius,0],[outer_radius,0]], cable_width,layer = base_layer)
+        # electrode_tail = cad.core.Path([[-outer_radius,0],[outer_radius,0]], cable_width,layer = base_layer)
 
 
 
@@ -209,7 +385,9 @@ class Drum(cad.core.Cell):
         ##################################
 
         self.add([holy_section_of_head,holy_section_of_head.copy().reflect('x'), drum_head_inner,drum_head_outer,support_bottom,support_top])
-        self.add([electrode,electrode_tail])
+        self.add([electrode])
+        # self.add([electrode_tail])
+
         self.add([sacrificial_tail,sacrificial_drum])
 
 
@@ -232,7 +410,6 @@ class CPW(cad.core.Cell):
         self.pin = pin
         self.gap = gap
         self.layer = layer
-
         if len(points) == 2:
             self.add(double_line_polygon(points[0],points[1],gap,pin))
             self.length += norm(points[1]-points[0])
