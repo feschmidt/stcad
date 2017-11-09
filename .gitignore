@@ -1,0 +1,6 @@
+*.pyc
+*.gds
+*.txt
+*.DS_Store
+felix_test*
+testing_scripts/mario_test.py

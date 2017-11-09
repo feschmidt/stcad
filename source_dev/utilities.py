@@ -2,20 +2,51 @@ import gdsCAD as cad
 import shapely
 import numpy as np
 import collections
+#import gdspy
 
+def length_path(points):
+	length=0
+	for i in range(len(points)-1):
+		length += np.sqrt((points[i+1][1]-points[i][1])**2+(points[i+1][0]-points[i][0])**2)
+	return length
+
+def shapely_to_poly(shapely_Polygon):
+	"""
+	converts a shapely polygon to a gdsCAD Boundary.
+	"""
+	pol_type = shapely_Polygon.geom_type
+	if pol_type != 'Polygon':
+		raise ValueError('Shapely to Polygon > Input is not a polygon!')
+	else:
+		points = np.array(shapely_Polygon.exterior.coords.xy)
+		reshaped_points = np.transpose(points)
+		polygon = cad.core.Boundary(reshaped_points)
+
+	return polygon
+
+def poly_to_shapely(polygon):
+	"""
+	converts a polygon or Boundary to a shapely polygon
+	"""
+	points = polygon.points
+	shapely_polygon = shapely.geometry.Polygon(points)
+
+	return shapely_polygon
 
 
 def make_rounded_edges(rectangle, radius, dict_corners):
 	
-	'''
+	"""
 	Rectangle: is a gdscad object (rectangle)
 	layer : layer to place the object in
 	list_corners: [BL,BR,TR,TL] order is important
 	Note that the length of the corner list cannot exceed the corners
 	of the object. If the length is smaller, the first n corners will be 
 	rounded and smoothed
+
 	This function returns an object with rounded corners
-	'''
+
+	"""
 
 	original_layer = rectangle.layer
 	corners = rectangle.bounding_box
@@ -64,9 +95,6 @@ def make_rounded_edges(rectangle, radius, dict_corners):
 	out.layer = original_layer
 	return out
 
-
-
-
 def mask_disk(radius):
 
 	circle = shapely.geometry.Point(0, 0).buffer(radius, resolution=64)
@@ -79,38 +107,14 @@ def mask_disk(radius):
 
 	return quarter_disk
 
-def shapely_to_poly(shapely_Polygon):
-	'''
-	converts a shapely polygon to a gdsCAD Boundary.
-	'''
-	pol_type = shapely_Polygon.geom_type
-	if pol_type != 'Polygon':
-		raise ValueError('Shapely to Polygon > Input is not a polygon!')
-	else:
-		points = np.array(shapely_Polygon.exterior.coords.xy)
-		reshaped_points = np.transpose(points)
-		polygon = cad.core.Boundary(reshaped_points)
-
-	return polygon
-
-def poly_to_shapely(polygon):
-	'''
-	converts a polygon or Boundary to a shapely polygon
-	'''
-	points = polygon.points
-	shapely_polygon = shapely.geometry.Polygon(points)
-
-	return shapely_polygon
-
-def join_polygons(polygon1,
-                  polygon2,format_shapely=False):
-    '''
+def join_polygons(polygon1,polygon2,format_shapely=False):
+    """
     Inputs are:
         polygon1, polygon
         polygon2, polygon
     joining two polygons. Works better if there is overlap.
     Returns polygon = polygon1 U polygon2
-    '''
+    """
     if format_shapely == False:
     	shapely_polygon1 = poly_to_shapely(polygon1)
     	shapely_polygon2 = poly_to_shapely(polygon2)
@@ -127,13 +131,44 @@ def join_polygons(polygon1,
 
     return out
 
+def buffer_polygon(polygon,amount):
+
+	shapely_polygon = poly_to_shapely(polygon)
+	return shapely_to_poly(shapely_polygon.buffer(amount))
+
+def xor_polygons(polygon1,polygon2,format_shapely=False):
+    """
+    Inputs are:
+        polygon1, polygon
+        polygon2, polygon
+    joining two polygons. Works better if there is overlap.
+    Returns polygon = polygon1 U polygon2
+    """
+    if format_shapely == False:
+    	shapely_polygon1 = poly_to_shapely(polygon1)
+    	shapely_polygon2 = poly_to_shapely(polygon2)
+    	xor_poly = shapely_polygon1.difference(shapely_polygon2)
+    	out = shapely_to_poly(xor_poly)
+
+    else:
+    	shapely_polygon1 = polygon1
+    	shapely_polygon2 = polygon2
+
+    	xor_poly = shapely_polygon1.difference(shapely_polygon2)
+    	out = xor_poly
+
+
+    return out
+
 def correct_for_multipol(pol):
-    '''
+    """
     Inputs are:
         pol, Suspected Multipolygon
     Takes the main polygon of a multipolygon.
+
     Typically used to solve the problem of non-overlapping polygons being substracted.
-    '''
+
+    """
     pol_type = pol.geom_type
     if pol_type == 'MultiPolygon':
         area = np.zeros(len(pol.geoms))
@@ -144,90 +179,83 @@ def correct_for_multipol(pol):
     return pol
 
 
-# width = 10
-# height = 10
+def angle(vec):
+	return np.arctan2(vec[1],vec[0])
 
-# pad = cad.shapes.Rectangle((0,0),(width,height))
-# pad.layer=1
+def line_polygon(start, end, line_width):
+	e=np.array(end)
+	s=np.array(start)
+	ang = angle(e-s)
+	vec = float(line_width)/2.*np.array([-np.sin(ang),np.cos(ang)])
+	return cad.core.Boundary(np.array([start+vec,end+vec,end-vec,start-vec]))
 
-# # corner_coord = pad.points
-# # d= np.flipud(corner_coord)
+def perpendicular_line(a,b,length,line_width):
+	a=np.array(a)
+	b=np.array(b)
+	ang = angle(b-a)
+	vec = float(length)*np.array([-np.sin(ang),np.cos(ang)])
+	start = (b+a)/2
+	end = start + vec
+	return line_polygon(start, end, line_width)
 
-# # rot=0
-# # rectangle_shapely = poly_to_shapely(pad)
+def double_line_polygon(start, end, line_width,seperation):
+	e=np.array(end)
+	s=np.array(start)
+	ang = angle(e-s)
+	vec = np.array([-np.sin(ang),np.cos(ang)])
+	line_1 = cad.core.Boundary(np.array([start+(seperation/2.+line_width)*vec,end+(seperation/2.+line_width)*vec,end+(seperation/2.)*vec,start+(seperation/2.)*vec]))
+	line_2 = cad.core.Boundary(np.array([start-(seperation/2.+line_width)*vec,end-(seperation/2.+line_width)*vec,end-(seperation/2.)*vec,start-(seperation/2.)*vec]))
+	
+	return [line_1,line_2]
 
-# # mask_gdscad =mask_disk(0.7,layer=2).rotate(rot).translate(d[0]-0.0000001)
+def arc_polygon(center,radius, line_width, final_angle = 0,initial_angle = 0, number_of_points = 199):
 
-# # mask_shapely = poly_to_shapely(mask_gdscad)
+    if final_angle == initial_angle:
+        final_angle += 360.0
+        
+    angles = np.linspace(initial_angle, final_angle, number_of_points).T * np.pi/180.
 
-# # rounded_rect = rectangle_shapely.difference(mask_shapely)
+    points=np.vstack((np.cos(angles), np.sin(angles))).T * (radius+line_width/2.) + np.array(center)
 
-# # out = shapely_to_poly(rounded_rect)
+    points2 = np.vstack((np.cos(angles), np.sin(angles))).T * (radius-line_width/2.) + np.array(center)
+    points=np.vstack((points, points2[::-1]))
+    
+    return cad.core.Boundary(np.array(points))
 
-# corners ={}
-# corners['BL'] = 0
-# corners['BR'] = 1
-# corners['TR'] = 2
-# corners['TL'] = 3
-# # #
-# out = make_rounded_edges(pad, radius=0.4,dict_corners=corners)#,'TL'])
+def double_arc_polygon(center,radius, line_width,seperation, final_angle = 0,initial_angle = 0, number_of_points = 199):
 
+    arc_1 = arc_polygon(center,radius-seperation/2.-line_width/2., line_width, final_angle,initial_angle, number_of_points)
+    arc_2 = arc_polygon(center,radius+seperation/2.+line_width/2., line_width, final_angle,initial_angle, number_of_points)
+    return [arc_1,arc_2]
 
-# #
-# cell.add(out)
-# # cell.add(mask_gdscad)
-# layout = cad.core.Layout('LIBRARY')
-# layout.add(cell)
-# layout.show()
+def probe_pad(position, orientation,layer = 1, taper_start_width = 100, taper_end_width = 4, taper_length = 100, line_length = 20, line_width = None):
+	if line_width == None:
+		line_width = taper_end_width
+	points = [[-line_width/2.,0],\
+	[-line_width/2.,line_length],\
+	[-taper_end_width/2.,line_length],\
+	[-taper_start_width/2.,line_length+taper_length],\
+	[taper_start_width/2.,line_length+taper_length],\
+	[taper_end_width/2.,line_length],\
+	[line_width/2.,line_length],\
+	[line_width/2.,0]]
+	shape = cad.core.Boundary(np.array(points),layer)
 
-# # print co.bounding_box
-# ----------------------------------------------------------------------
-# height = 0
-# top_width = 5
-# fork_height = height+ 20
-# fork_depth = 2
-# base_width = 20
-# top_width = 10
+	if orientation == 'up':
+		pass
+	elif orientation == 'right':
+		shape.rotate(90.)
+	elif orientation == 'left':
+		shape.rotate(-90.)
+	elif orientation== 'down':
+		shape.rotate(180.)
+	else:
+		ValueError("First argument should be either 'up', 'right', 'left' or 'down'")
 
+	shape.translate(position)	
 
-# # box=shapes.Rectangle((-l,-l), (l,l), layer=2)
-# # trapezoid = core.Boundary( [(-0.5*base_width,0),
-# # 										(0.5*base_width,0),
-# # 										(0.5*top_width,height),
-# # 										(-0.5*top_width,height),
-# # 										(-0.5*base_width,0)])
-# fork = cad.core.Boundary([(-0.5*top_width,height),
-# 							(0.5*top_width,height),
-# 							(0.5*top_width,fork_height),
-# 							(0.5*top_width - top_width/3.,fork_height),
-# 							(0.5*top_width - top_width/3.,fork_height-fork_depth),
-# 							(0.5*top_width - 2*top_width/3.,fork_height-fork_depth),
-# 							(0.5*top_width - 2*top_width/3.,fork_height),
-# 							(-0.5*top_width ,fork_height),
-# 							(-0.5*top_width,0)])
+	return shape
 
 
-# corners = collections.OrderedDict()
-# corners['BLO'] = 0
-# corners['BR1'] = 1
-# corners['TR2'] = 2
-# corners['TL3'] = 3
-# corners['BR4O'] = 4
-# corners['BL5O'] = 5
-# corners['TR6'] = 6
-# corners['TL7'] = 7
-
-# print corners
-# # #
-# out = make_rounded_edges(fork, radius=0.3,dict_corners=corners)#,'TL'])
-# out.points[0] = [-10,0]
-# out.points[-1] = [-10,0]
-# print out.points
-# cell=cad.core.Cell('Tna')
-
-# cell.add(out)
-# # cell.add(mask_gdscad)
-# layout = cad.core.Layout('LIBRARY')
-# layout.add(cell)
-# layout.show()
-
+# if __name__ == '__main__':
+# 	probe_bad([20,20],'down').show()

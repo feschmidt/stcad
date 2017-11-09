@@ -1,56 +1,196 @@
+#*** BROKEN
+
 import numpy as np
 import gdsCAD as cad
 
-class ShuntCavity():
-
-    def __init__(self, name, dict_cavity):
+class RFShuntGate():
+    '''
+    *** BROKEN
+    *** Needs to be updated to the standard format of rf_dcbias.py
+    Class for RF DC bias cavities with gate
+    Initial values:
+        - shuntgate = False
+    '''
+    def __init__(self, name, dict_cavity, shuntgate=False):
 
         self.name = name
-        self.dict_cavity = dict_cavity
+        self.dict_dcbias = dict_dcbias
+        self.length = self.dict_dcbias['length']
+        self.pos = self.dict_dcbias['position']    # (x0,y0)
+        self.feedlength = self.dict_dcbias['feedlength']
+        self.shunt = self.dict_dcbias['shunt']     # (basex,basey,insoverlap,topx,topy)
+        self.hole = self.dict_dcbias['hole']       # (xdim, ydim)
+        self.shuntgate = shuntgate
+        
+        self.centerwidth = self.dict_dcbias['centerwidth']
+        self.gapwidth = self.dict_dcbias['gapwidth']
 
         self.layer_bottom = 1
-        self.layer_diel = 2
-        self.layer_top = 3
+        self.layer_top = 2
+        self.layer_ins = 3
+        
 
-        self.cell = cad.core.Cell('RF_CAVITY')
+        # hard coded values
+        self.radius = 1000
 
-        self.length = self.dict_cavity['length']
-        self.centerwidth = self.dict_cavity['centerwidth']
-        self.gapwidth = self.dict_cavity['gapwidth']
-        self.shunts = self.dict_cavity['shunts']
-        self.holedim = self.dict_cavity['holedim']
-        self.holemarker = self.dict_cavity['holemarker']
+        self.cell = cad.core.Cell('RF CELL')
 
-        self.center = 8500
-        self.launcherwidth = 490
-        self.llstart = 3100     # x coordinate of launcher lead start
-        self.llength = self.dict_cavity['leadlauncher']
-        self.llend = self.llstart + self.llength #3400       # x coordinate of launcher lead end
+    
+     def gen_full(self):
+        """
+        Generate two DC bias cavities with gatelines on the other side. Option to have gate shunts at the end
+        """
 
-        self.shuntheight = 420
-        self.shuntlength = 155
-        self.top_dx = 32.5
-        self.top_dy = 106
-        self.diel_dxy = 5 
+        x0 = self.pos[0]
+        y0 = self.pos[1]
+        feedlength = self.feedlength
+        length = self.length
 
-        self.r0 = 150
-        self.top_cv = 8350
-        self.bot_cv = 7600 #7594
-        # bot_cv should be the main variable depending on length of cavity. However, for this
-        # we need to restructure the creation of the meandering
+        # Generate first cavity
+        rfcell = cad.core.Cell('RESONATOR')
+        resonator = self.gen_cavity(x0,y0,feedlength,self.hole,self.shuntgate)
+        rfcell.add(resonator)
 
-    # gen_full with two gen_cavity, each with own centerwidth
-    # afterwards add elements in gen_full
-    def gen_full(self):
+        self.cell.add(rfcell)
 
-        cavity_nogap = self.gen_cavities(gapwidth=0)
-        cavity_gap = self.gen_cavities(gapwidth=self.gapwidth)
+        # Add the other one as copy of the first one
+        self.cell.add(cad.core.CellReference(rfcell,origin=(0,0),x_reflection=True))
 
-        for cavity in [cavity_nogap, cavity_gap]:
-            for i in range(len(cavity)):
-                self.cell.add(cavity[i])
+        return self.cell
+        
+    
+    def gen_partial(self, loc):
+        """
+        Generate one DC bias cavity with specified loc(ation)
+        values for loc: bottom, top
+        """
 
+        x0 = self.pos[0]
+        y0 = self.pos[1]
+        feedlength = self.feedlength
+        length = self.length
+
+        # Generate first cavity
+        rfcell = cad.core.Cell('RESONATOR')
+        resonator = self.gen_cavity(x0,y0,feedlength,self.hole,self.shuntgate)
+        rfcell.add(resonator)
+
+        if loc == 'bottom':
+            self.cell.add(rfcell)
+        elif loc == 'top':
+            self.cell.add(cad.core.CellReference(rfcell,origin=(0,0),x_reflection=True))
+        else:
+            raise ValueError("loc(ation) is invalid. Allowed values are bottom, top.")
+
+        return self.cell
+        
+############ START OF WORKZONE    
+    def gen_cavity(self, x0, y0, feedlength, hole, shuntgate):
+        """
+        Generate baselayer with shunted gate (optional)
+        """
+
+        self.bias_cell = cad.core.Cell('RF_DC_BIAS')
+        
+        # Create feed to shunt
+        part1points = [(x0, y0),
+                    (x0+feedlength, y0),
+                    (x0+feedlength, y0+self.gapwidth),
+                    (x0, y0+self.gapwidth)]
+        part1 = cad.core.Boundary(part1points, layer=self.layer_bottom)
+        part11 = cad.utils.reflect(part1,'x',origin=(0,y0+self.gapwidth+self.centerwidth/2.))
+        
+        
+        # Create shunt
+        x1 = x0+feedlength
+        y1 = y0
+        shunt = self.gen_shunt_full((x1,y1))
+        
+        
+############ END OF WORKZONE    
+    
+    def gen_shunt_full(self,pos):
+        """
+        Creates a shunt capacitor from center conductor to ground
+        """
+        x0 = pos[0]
+        y0 = pos[1]
+
+        shuntcell = cad.core.Cell('SHUNT')
+        shuntbase = self.gen_shunt_base((x0,y0))
+        shunttop = self.gen_shunt_top((x0+self.gapwidth+self.shunt[0]/2-self.shunt[3]/2,y0+self.gapwidth+self.centerwidth/2-self.shunt[4]/2))
+        shuntins = self.gen_shunt_ins((x0+self.gapwidth+self.shunt[0]/2-self.shunt[3]/2,y0+self.gapwidth+self.centerwidth/2-self.shunt[4]/2))
+        [shuntcell.add(toadd) for toadd in [shuntbase, shuntins, shunttop]]
+        return shuntcell
+
+    def gen_shunt_base(self,pos):
+        """
+        Base layer for shunt
+        """
+        x0 = pos[0]
+        y0 = pos[1]
+
+        shuntbase = cad.core.Cell('shuntbase')
+        shuntpoints = [(x0, y0+self.gapwidth),
+                     (x0, y0-self.shunt[1]/2.),
+                     (x0+self.shunt[0]+2*self.gapwidth, y0-self.shunt[1]/2.),
+                     (x0+self.shunt[0]+2*self.gapwidth, y0+self.gapwidth),
+                     (x0+self.shunt[0]+self.gapwidth, y0+self.gapwidth),
+                     (x0+self.shunt[0]+self.gapwidth, y0+self.gapwidth-self.shunt[1]/2.),
+                     (x0+self.gapwidth, y0+self.gapwidth-self.shunt[1]/2.),
+                     (x0+self.gapwidth, y0+self.gapwidth)]
+        shunt1 = cad.core.Boundary(shuntpoints, layer=self.layer_bottom)
+        shunt11 = cad.utils.reflect(shunt1,'x',origin=(0,y0+self.gapwidth+self.centerwidth/2.))
+        shuntbase.add(shunt1)
+        shuntbase.add(shunt11)
+        return shuntbase
+      
+
+    def gen_shunt_ins(self,pos):
+        """
+        Returns insulating slab for shunt capacitors
+        """
+        x0 = pos[0]
+        y0 = pos[1]
+
+        shuntins = cad.core.Cell('shuntins')
+        shuntpoints = [(x0-self.shunt[2],y0-self.shunt[2]),
+                    (x0+self.shunt[3]+self.shunt[2],y0+self.shunt[4]+self.shunt[2])]
+        shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_ins)
+        shuntins.add(shunt)
+        return shuntins
+
+
+    def gen_shunt_top(self,pos):
+        """
+        Returns top plate for shunt capacitors
+        """
+        x0 = pos[0]
+        y0 = pos[1]
+
+        shunttop = cad.core.Cell('shunttop')
+        shuntpoints = [(x0,y0),
+                    (x0+self.shunt[3],y0+self.shunt[4])]
+        shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_top)
+        shunttop.add(shunt)
+        return shunttop
+        
+    
+     def gen_label(self,pos):
+        """
+        Generate label with resonator length
+        """
+        labelcell = cad.core.Cell('DEV_LABEL')
+        if self.termination=='squid':
+            label = cad.shapes.LineLabel(self.length, 100, (pos[0],pos[1]), line_width=5, layer=self.layer_bottom)
+        labelcell.add(label)
+        return labelcell
+                    
+################################333    
     def gen_cavities(self,gapwidth=0):
+        '''
+        Create the individual cavity. Gapwidth = 0: center conductor. Finite gapwidth: Gaps around
+        '''
 
         length = self.length
         centerwidth = self.centerwidth + 2*gapwidth
@@ -66,7 +206,7 @@ class ShuntCavity():
         llstart = self.llstart          
         llend = self.llend
         if gapwidth!=0:
-            x1_launcher = -500
+            x1_launcher = 0#-500
             y1_launcher = 230
         else:
             x1_launcher = 700
@@ -101,7 +241,8 @@ class ShuntCavity():
         endx0 = stopx0+r0*8
         endx = length - (A - endx0) - gapwidth
         # without any curves: cav_straight = endx - startx0
-
+        
+        # Do the wiggles
         curve1 = cad.shapes.Disk((stopx0,top_cv),radius,inner_radius=inner_radius,initial_angle=90,
             final_angle=0)
         curve1_lead = cad.core.Path([(stopx0+r0, top_cv),(stopx0+r0,bot_cv)],centerwidth)
@@ -118,7 +259,7 @@ class ShuntCavity():
             final_angle=90)
         final_lead = cad.core.Path([(endx0,center),(endx,center)],centerwidth)
 
-        
+        # Create hole at the end
         holex0 = endx
         holedim = self.holedim
         holemarker = self.holemarker
@@ -149,10 +290,10 @@ class ShuntCavity():
             self.endshunt = endhole
         
         # Create second launcher
-        launcher2 = cad.utils.reflect(launcher,'y',origin=(5000,5000))
+        launcher2 = cad.utils.reflect(launcher,'y',origin=(5e3,5e3))
         holex0 = endx
         holedim = self.holedim
-        launcher2 = cad.utils.translate(launcher2,(self.endshunt-(10000-llstart),0))   
+        launcher2 = cad.utils.translate(launcher2,(self.endshunt-(10e3-llstart),0))   
         # For future: fix second shunt. For length adjustments make meandering longer or shorter,
         # and center it. For now this is sufficient.
         
@@ -203,14 +344,14 @@ class ShuntCavity():
         
         
         # Create second cavity as mirrored version of first one
-        cavity2 = [cad.utils.reflect(cavity1[i],'x',origin=(5000,5000)) for i in range(len(cavity1))]
+        cavity2 = [cad.utils.reflect(cavity1[i],'x',origin=(5e3,5e3)) for i in range(len(cavity1))]
         
         return (cavity1, cavity2)
         
 
     def gen_shunt(self,leadin,leadout,gap=0):
-
         '''
+        Create shunt capacitors
         leadin: tuple (x-coordinate, lendth)
         leadout: int length
         gap: gapwidth between center conductor and ground
