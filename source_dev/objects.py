@@ -20,6 +20,8 @@ def angle(vec):
 def norm(vec):
     return np.sqrt(vec[0]**2+vec[1]**2)
 
+
+
 class WaffleCapacitor(cad.core.Cell):
     """docstring for WaffleCapacitor"""
     def __init__(self,base_width, 
