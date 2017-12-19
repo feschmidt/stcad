@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.constants import epsilon_0
 from stcad.source_dev.utilities import *
-from stcad.source_dev.meandering_line import MeanderingLine
 import gdsCAD as cad
 import copy
 
