@@ -7,9 +7,10 @@ import time
 class Junctiontest():
 
     def __init__(self, name, dict_pads, dict_junctions, nrows, ncols, w_junc_start,
-                 dw_junc, dx, dy, block, block_spacing):
+                 dw_junc, dx, dy, block, block_spacing,reference_shape = True):
 
         self.name = name
+        self.reference_shape=reference_shape
         self.dict_pads = dict_pads
         self.dict_junctions = dict_junctions
         self.ncols = ncols
@@ -57,10 +58,11 @@ class Junctiontest():
         max_y = grid.bounding_box[1][1] + self.block_spacing[1]
 
         # This is a reference shape
-        ref_points = [(0, 0), (200, 0), (200, 40),
-                      (40, 40), (40, 200), (0, 200)]
-        ref_shape = cad.core.Boundary(ref_points, layer=self.layer_ref)
-        ref_cell.add(ref_shape)
+        if self.reference_shape:
+            ref_points = [(0, 0), (200, 0), (200, 40),
+                          (40, 40), (40, 200), (0, 200)]
+            ref_shape = cad.core.Boundary(ref_points, layer=self.layer_ref)
+            ref_cell.add(ref_shape)
         grid.add(ref_cell, origin=(grid.bounding_box[0][0] - 100, -100))
 
         new_cell = cad.core.CellArray(grid, self.block[0],
