@@ -3,6 +3,7 @@ from scipy.constants import epsilon_0
 from stcad.source_dev.utilities import *
 import gdsCAD as cad
 import copy
+from stcad.source_dev.chip import Base_Chip
 
 def sign(x):
   if x<0:
@@ -17,6 +18,8 @@ def angle(vec):
 
 def norm(vec):
     return np.sqrt(vec[0]**2+vec[1]**2)
+
+
 
 class WaffleCapacitor(cad.core.Cell):
     """docstring for WaffleCapacitor"""
@@ -55,7 +58,7 @@ class WaffleCapacitor(cad.core.Cell):
         self.top_hole_layer = top_hole_layer
 
         # base layer
-        base_hex = Hexagon(width = base_width,layer = base_layer)
+        base_hex = Hexagon(width = base_width,layer = base_layer, name = name+'base_hex')
         hex_width = base_width+base_lead_length*2.
 
 
@@ -83,13 +86,13 @@ class WaffleCapacitor(cad.core.Cell):
 
         # base holes
         base_margin = base_width/(n_holes)/np.sqrt(2)
-        base_holes = hex_array_of_holes(base_margin,base_width,n_holes,base_hole_diameter,base_hole_layer)
+        base_holes = hex_array_of_holes(base_margin,base_width,n_holes,base_hole_diameter,base_hole_layer, name = name+'base_holes')
         self.n_base_holes = base_holes.n
         self.add(base_holes)
 
         # sacrificial layer
         sacrificial_width = base_width+2*sacrificial_width_overlap
-        sacrificial_hex = Hexagon(width = sacrificial_width,layer = sacrificial_layer)
+        sacrificial_hex = Hexagon(width = sacrificial_width,layer = sacrificial_layer, name = name+'sacrificial_hex')
         if ground:
             sacrificial_hex.add_leads_on_sides(base_lead_length,base_line_width+2*sacrificial_width_overlap)
         else:
@@ -97,28 +100,29 @@ class WaffleCapacitor(cad.core.Cell):
         self.add(sacrificial_hex)
 
         # sacrificial holes
-        sacrificial_holes = hex_array_of_holes(base_margin,base_width,n_holes,base_hole_diameter-2*sacrificial_width_overlap,sacrificial_hole_layer)
+        sacrificial_holes = hex_array_of_holes(base_margin,base_width,n_holes,base_hole_diameter-2*sacrificial_width_overlap,sacrificial_hole_layer, name = name+'sacrificial_holes')
         self.n_sacrificial_holes = sacrificial_holes.n
         self.add(sacrificial_holes)
 
         # top layer
         top_width =  sacrificial_width+2*side_support
-        sacrificial_hex = Hexagon(width =top_width,layer = top_layer)
+        sacrificial_hex = Hexagon(width =top_width,layer = top_layer, name = name+'top_hex')
         self.add(sacrificial_hex)
         cad.core.default_layer=top_layer
         self.add(line_polygon([-top_width/2.+base_line_width,0], [-hex_width/2.-ground_length,0], base_line_width))
 
         # top holes
-        top_holes = hex_array_of_holes(base_margin/2.,base_width,2*n_holes+1,release_hole_diameter,top_hole_layer, skip_some=True)
+        top_holes = hex_array_of_holes(base_margin/2.,base_width,2*n_holes+1,release_hole_diameter,top_hole_layer, skip_some=True, name = name+'top_holes')
         self.n_top_holes = top_holes.n
         self.add(top_holes)
+        
+        self.area = 3.*np.sqrt(3)/2.*float(self.base_width*1.e-6)**2
+        self.area -=self.n_base_holes*np.pi*(float(self.base_hole_diameter*1.e-6)/2.)**2
+        self.area -=self.n_top_holes*np.pi*(float(self.release_hole_diameter*1.e-6)/2.)**2
 
     def capacitance(self,gap):
-        A = 3.*np.sqrt(3)/2.*float(self.base_width*1.e-6)**2
-        A -=self.n_base_holes*np.pi*(float(self.base_hole_diameter*1.e-6)/2.)**2
-        A -=self.n_top_holes*np.pi*(float(self.release_hole_diameter*1.e-6)/2.)**2
 
-        return epsilon_0*A/gap
+        return epsilon_0*self.area/gap
 
 class hex_array_of_holes(cad.core.Cell):
     """docstring for ClassName"""
@@ -399,6 +403,184 @@ class Drum(cad.core.Cell):
 
         self.add([sacrificial_tail,sacrificial_drum])
 
+class WheelDrum(cad.core.Cell):
+    """docstring for Drum"""
+    def __init__(self, base_layer = 1,
+                    sacrificial_layer = 2 ,
+                    top_layer = 3,
+                    electrode_radius = 6.,
+                    spoke_length = 3.,
+                    rim_width = 10.,
+                    lead_width = 0.5,
+                    opening_width = 1.,
+                    top_base_overlap = 4.,
+                    drum_head_radius = 5.,
+                    n_spokes = 7,
+                    spoke_width = 0.5,
+                    entrance_support_width = 0.5,
+                    name = ''):
+        super(WheelDrum, self).__init__(name)
+        opening_angle_top = np.arcsin(float(opening_width)/float(electrode_radius+spoke_length)/2.)*180/np.pi
+        opening_angle_base = np.arcsin(float(opening_width+2.*entrance_support_width)/float(electrode_radius+spoke_length)/2.)*180/np.pi
+
+
+        ##################################
+        # base layer
+        ##################################
+
+        cad.core.default_layer=base_layer
+
+        # Electrode
+        disk = cad.shapes.Disk((0,0), electrode_radius, layer=base_layer)         
+        self.add(disk)
+
+        # Lead
+        lead = MeanderingLine(points = [[0,0],[(electrode_radius+spoke_length+rim_width),0]],
+            line_width = lead_width,
+            layer = base_layer,
+            name = name+'_lead')
+        self.add(lead)
+
+        # Rim
+        rim = cad.shapes.Disk((0,0), ( spoke_length+rim_width+electrode_radius), inner_radius =( spoke_length+electrode_radius), layer=base_layer)
+        gap = cad.shapes.Rectangle([0,-opening_width/2.-entrance_support_width],[electrode_radius+spoke_length+rim_width,opening_width/2.+entrance_support_width])
+            
+        self.add([xor_polygons(rim,gap)])
+
+        ##################################
+        # sacrificial layer
+        ##################################
+
+        cad.core.default_layer=sacrificial_layer
+        rim = cad.shapes.Disk((0,0), ( spoke_length+rim_width+electrode_radius-top_base_overlap), inner_radius =( spoke_length+electrode_radius), layer=sacrificial_layer)
+        gap = cad.shapes.Rectangle([0,-opening_width/2.-entrance_support_width],[electrode_radius+spoke_length+rim_width,opening_width/2.+entrance_support_width])
+        self.add([xor_polygons(rim,gap)])
+
+
+        center = cad.shapes.Disk((0,0), ( spoke_length+electrode_radius), layer=sacrificial_layer)
+        self.add(center)
+
+        ##################################
+        # top layer
+        ##################################
+
+        cad.core.default_layer=top_layer
+
+        # Rim
+        rim = cad.shapes.Disk((0,0), ( spoke_length+rim_width+electrode_radius), inner_radius =( spoke_length+electrode_radius), layer=top_layer)
+        gap = cad.shapes.Rectangle([0,-opening_width/2.],[electrode_radius+spoke_length+rim_width,opening_width/2.])
+        self.add(xor_polygons(rim,gap))
+
+        # Drum head
+        drum_head = cad.shapes.Disk((0,0), drum_head_radius, layer=top_layer)         
+        self.add(drum_head)
+
+        # Spokes
+
+        delta_angle = 360./float(n_spokes)
+        radius = spoke_length+rim_width+electrode_radius
+        angle = 0.+delta_angle/2.
+        for n in range(n_spokes):
+            x = radius*np.cos(angle*np.pi/180.)
+            y = radius*np.sin(angle*np.pi/180.)
+            spoke = MeanderingLine(points = [[0,0],[x,y]],
+            line_width = spoke_width,
+            layer = top_layer,
+            name = name+'spoke_'+str(n))
+            self.add(spoke)
+            angle+=delta_angle
+
+
+
+
+        # angle_start = 0
+        # angle_end = hole_angle
+        # section = cad.shapes.Disk((0,0), head_radius-hole_distance_to_edge, inner_radius = hole_distance_to_center,\
+        #   initial_angle=angle_start, final_angle=angle_end, layer=top_layer)
+        # hole_2_position=[(hole_distance_to_center+hole_radius)*np.cos(angle_end/180.*np.pi),(hole_distance_to_center+hole_radius)*np.sin(angle_end/180.*np.pi)]
+        # hole_2 = cad.shapes.Disk(hole_2_position, hole_radius,layer=top_layer)
+        # section=xor_polygons(section,hole_2)
+        # holy_section_of_head.add(section)
+
+
+        # for i in range(N_holes-1):
+        #   angle_start = hole_angle+i*(180-2*hole_angle)/(N_holes-1)
+        #   angle_end = hole_angle+(i+1)*(180-2*hole_angle)/(N_holes-1)
+        #   section = cad.shapes.Disk((0,0), head_radius-hole_distance_to_edge, inner_radius = hole_distance_to_center,\
+        #     initial_angle=angle_start, final_angle=angle_end, layer=top_layer)
+        #   hole_1_position=[(hole_distance_to_center+hole_radius)*np.cos(angle_start/180.*np.pi),(hole_distance_to_center+hole_radius)*np.sin(angle_start/180.*np.pi)]
+        #   hole_1 = cad.shapes.Disk(hole_1_position, hole_radius,layer=top_layer)
+        #   hole_2_position=[(hole_distance_to_center+hole_radius)*np.cos(angle_end/180.*np.pi),(hole_distance_to_center+hole_radius)*np.sin(angle_end/180.*np.pi)]
+        #   hole_2 = cad.shapes.Disk(hole_2_position, hole_radius,layer=top_layer)
+        #   section=xor_polygons(section,hole_1)
+        #   section=xor_polygons(section,hole_2)
+        #   holy_section_of_head.add(section)
+
+
+        # angle_start = 180-hole_angle
+        # angle_end = 180
+        # section = cad.shapes.Disk((0,0), head_radius-hole_distance_to_edge, inner_radius = hole_distance_to_center,\
+        #   initial_angle=angle_start, final_angle=angle_end, layer=top_layer)
+        # hole_1_position=[(hole_distance_to_center+hole_radius)*np.cos(angle_start/180.*np.pi),(hole_distance_to_center+hole_radius)*np.sin(angle_start/180.*np.pi)]
+        # hole_1 = cad.shapes.Disk(hole_1_position, hole_radius,layer=top_layer)
+        # section=xor_polygons(section,hole_1)
+        # holy_section_of_head.add(section)
+
+        # ##################################
+        # # Head (rest + supports)
+        # ##################################
+
+        # drum_head_outer = cad.shapes.Disk((0,0), head_radius, inner_radius = hole_distance_to_center+2*hole_radius, layer=top_layer) 
+        # drum_head_inner = cad.shapes.Disk((0,0), hole_distance_to_center, layer=top_layer) 
+
+
+        # support_top = cad.shapes.Disk((0,0), outer_radius, inner_radius = head_radius,\
+        #   initial_angle=opening_angle, final_angle=180-opening_angle, layer=top_layer)
+        # support_bottom = cad.shapes.Disk((0,0), outer_radius, inner_radius = head_radius,\
+        #   initial_angle=opening_angle, final_angle=180-opening_angle, layer=top_layer).copy().reflect('x')
+
+
+
+
+
+
+
+        # ##################################
+        # # Sacrificial layer
+        # ##################################
+
+
+        # cad.core.default_layer=sacrificial_layer
+        # sacrificial_drum = cad.shapes.Disk((0,0), head_radius, layer=sacrificial_layer) 
+        # sacrificial_tail = cad.core.Path([[-head_radius-sacrificial_tail_length,0],[head_radius+sacrificial_tail_length,0]],\
+        #  sacrificial_tail_width,layer = sacrificial_layer)
+
+        # ##################################
+        # # Electrode
+        # ##################################
+
+        # cad.core.default_layer=base_layer
+        # if split_electrode == False:
+        #     electrode = cad.shapes.Disk((0,0), electrode_radius, layer=base_layer) 
+        #     self.add([electrode])
+        # else:
+        #     disk = cad.shapes.Disk((0,0), electrode_radius, layer=base_layer) 
+        #     square_left = cad.shapes.Rectangle([-electrode_radius,electrode_radius],[+electrode_splitting/2.,-electrode_radius])
+        #     square_right = cad.shapes.Rectangle([+electrode_radius,electrode_radius],[-electrode_splitting/2.,-electrode_radius])
+            
+        #     self.add([xor_polygons(disk,square_left)])
+        #     self.add([xor_polygons(disk,square_right)])
+
+        # ##################################
+        # # Add all components
+        # ##################################
+
+        # self.add([holy_section_of_head,holy_section_of_head.copy().reflect('x'), drum_head_inner,drum_head_outer,support_bottom,support_top])
+        # # self.add([electrode_tail])
+
+        # self.add([sacrificial_tail,sacrificial_drum])
+
+
 
 class CPW(cad.core.Cell):
     """docstring for CPW"""
@@ -531,6 +713,8 @@ class SpiralInductor(cad.core.Cell):
         sacrificial_layer = 2,
         top_layer = 3,
         kinetic_inductance = 0.,
+        patch = False,
+        patching_layer = None,
         name=''):   
 
 
@@ -569,6 +753,11 @@ class SpiralInductor(cad.core.Cell):
 
         overlap_square = cad.shapes.Rectangle((do/2.-overlap_square_width/2.,-do/2.-overlap_square_width/2.),\
          (do/2.+overlap_square_width/2.,-do/2.+overlap_square_width/2.), layer = base_layer)
+
+        if patch:
+            self.add(cad.shapes.Rectangle((do/2.-overlap_square_width/2.,-do/2.-overlap_square_width/2.),\
+         (do/2.+overlap_square_width/2.,-do/2.+overlap_square_width/2.), layer = patching_layer))
+
         tail = cad.shapes.Rectangle((-tail_length,-do/2.+line_width/2.),\
          (do/2.,-do/2.-line_width/2.), layer = base_layer)
 
