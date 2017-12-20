@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.constants import epsilon_0
 from stcad.source_dev.utilities import *
-from stcad.source_dev.meandering_line import MeanderingLine
 import gdsCAD as cad
 import copy
 from stcad.source_dev.chip import Base_Chip
@@ -714,6 +713,8 @@ class SpiralInductor(cad.core.Cell):
         sacrificial_layer = 2,
         top_layer = 3,
         kinetic_inductance = 0.,
+        patch = False,
+        patching_layer = None,
         name=''):   
 
 
@@ -752,6 +753,11 @@ class SpiralInductor(cad.core.Cell):
 
         overlap_square = cad.shapes.Rectangle((do/2.-overlap_square_width/2.,-do/2.-overlap_square_width/2.),\
          (do/2.+overlap_square_width/2.,-do/2.+overlap_square_width/2.), layer = base_layer)
+
+        if patch:
+            self.add(cad.shapes.Rectangle((do/2.-overlap_square_width/2.,-do/2.-overlap_square_width/2.),\
+         (do/2.+overlap_square_width/2.,-do/2.+overlap_square_width/2.), layer = patching_layer))
+
         tail = cad.shapes.Rectangle((-tail_length,-do/2.+line_width/2.),\
          (do/2.,-do/2.-line_width/2.), layer = base_layer)
 
