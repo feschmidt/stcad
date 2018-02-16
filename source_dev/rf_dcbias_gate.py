@@ -184,10 +184,16 @@ AAAAAAA                   AAAAAAA    uuuuuuuu  uuuu          ttttttttttt     ooo
 
         CPWcell = cad.core.Cell('CPW')
 
-        if length < xspace:
+        if length <= xspace:
+            if length < xspace:
+                raise Warning('Distance between launchers smaller than resonator length. Maybe change launcher positions and try again.')
             cpw = CPW([[x0,y0],[x0+length,y0]],pin=pin,gap=gap,layer=layer)
         else:
-
+            # first case: only slightly longer than distance
+            if xspace-4*minrad<length-4*np.pi*minrad:
+                return KeyError('Minimum radius too small. Change launcher positions and try again.')
+            elif xspace-4*turnradius<length-4*np.pi*turnradius+2*yspace:
+                r0=minrad
 
         mlength = 800
         mwidth = 300
