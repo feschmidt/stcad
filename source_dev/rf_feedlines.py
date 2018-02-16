@@ -8,7 +8,7 @@ class Feedline():
     Class for RF transmission feedline
     """
 
-    def __init__(self, name, dict_feedline, feedline=True):
+    def __init__(self, name, dict_feedline, feedline=True, launchl0=0.4e3):
 
         self.name = name
         self.dict_feedline = dict_feedline
@@ -27,7 +27,7 @@ class Feedline():
         # hard coded parameters of the feedline
         self.lf_spacing = 0.5e3
         self.launchw = 0.5e3
-        self.launchl = 0.4e3
+        self.launchl = launchl0
         self.taperl = 0.5e3
 
         self.gen_params_launcher()

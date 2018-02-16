@@ -2,6 +2,7 @@
 
 import numpy as np
 import gdsCAD as cad
+from CPW import *
 
 class RFShuntGate():
     '''
@@ -11,16 +12,20 @@ class RFShuntGate():
     Initial values:
         - shuntgate = False
     '''
-    def __init__(self, name, dict_cavity, shuntgate=False):
+    def __init__(self, name, dict_dcbias, shuntgate=False, holemarker=True, shunttype=0):
 
         self.name = name
         self.dict_dcbias = dict_dcbias
-        self.length = self.dict_dcbias['length']
-        self.pos = self.dict_dcbias['position']    # (x0,y0)
-        self.feedlength = self.dict_dcbias['feedlength']
-        self.shunt = self.dict_dcbias['shunt']     # (basex,basey,insoverlap,topx,topy)
-        self.hole = self.dict_dcbias['hole']       # (xdim, ydim)
+
+        self.xmax = dict_dcbias['xmax'] # this is the maximum length without any wiggles
+        self.length = dict_dcbias['length']
+        self.pos = dict_dcbias['position']    # (x0,y0)
+        self.feedlength = dict_dcbias['feedlength']
+        self.shunt = dict_dcbias['shunt']     # (basex,basey,insoverlap,topx,topy)
+        self.hole = dict_dcbias['holedim']       # (xdim, ydim)
+        self.holemarker = holemarker
         self.shuntgate = shuntgate
+        self.shunttype = shunttype
         
         self.centerwidth = self.dict_dcbias['centerwidth']
         self.gapwidth = self.dict_dcbias['gapwidth']
@@ -36,7 +41,7 @@ class RFShuntGate():
         self.cell = cad.core.Cell('RF CELL')
 
     
-     def gen_full(self):
+    def gen_full(self):
         """
         Generate two DC bias cavities with gatelines on the other side. Option to have gate shunts at the end
         """
@@ -84,7 +89,6 @@ class RFShuntGate():
 
         return self.cell
         
-############ START OF WORKZONE    
     def gen_cavity(self, x0, y0, feedlength, hole, shuntgate):
         """
         Generate baselayer with shunted gate (optional)
@@ -93,22 +97,111 @@ class RFShuntGate():
         self.bias_cell = cad.core.Cell('RF_DC_BIAS')
         
         # Create feed to shunt
-        part1points = [(x0, y0),
-                    (x0+feedlength, y0),
-                    (x0+feedlength, y0+self.gapwidth),
-                    (x0, y0+self.gapwidth)]
-        part1 = cad.core.Boundary(part1points, layer=self.layer_bottom)
-        part11 = cad.utils.reflect(part1,'x',origin=(0,y0+self.gapwidth+self.centerwidth/2.))
-        
+        part1 = CPW([[x0,y0],[x0+feedlength,y0]], layer=self.layer_bottom, pin=self.centerwidth,gap=self.gapwidth)        
         
         # Create shunt
         x1 = x0+feedlength
-        y1 = y0
+        y1 = y0-self.centerwidth/2-self.gapwidth
         shunt = self.gen_shunt_full((x1,y1))
+
+        # Connect shunt to end
+        x2 = x1+self.shunt[0]+2*self.gapwidth
+        y2 = y0
+
+        ############ TODO
+        """
+                                                                                                                                                                                                                                                                                                                                    dddddddd                                                                                                                                                                                                                                                                    
+               AAA                                          tttt                                                                              tttt            iiii                                        lllllll              CCCCCCCCCCCCCPPPPPPPPPPPPPPPPP   WWWWWWWW                           WWWWWWWW                 d::::::d                                       iiii                                                                                        iiii           tttt          hhhhhhh                                                                                             
+              A:::A                                      ttt:::t                                                                           ttt:::t           i::::i                                       l:::::l           CCC::::::::::::CP::::::::::::::::P  W::::::W                           W::::::W                 d::::::d                                      i::::i                                                                                      i::::i       ttt:::t          h:::::h                                                                                             
+             A:::::A                                     t:::::t                                                                           t:::::t            iiii                                        l:::::l         CC:::::::::::::::CP::::::PPPPPP:::::P W::::::W                           W::::::W                 d::::::d                                       iiii                                                                                        iiii        t:::::t          h:::::h                                                                                             
+            A:::::::A                                    t:::::t                                                                           t:::::t                                                        l:::::l        C:::::CCCCCCCC::::CPP:::::P     P:::::PW::::::W                           W::::::W                 d:::::d                                                                                                                                                t:::::t          h:::::h                                                                                             
+           A:::::::::A           uuuuuu    uuuuuu  ttttttt:::::ttttttt       ooooooooooo      mmmmmmm    mmmmmmm     aaaaaaaaaaaaa   ttttttt:::::ttttttt    iiiiiii     cccccccccccccccc  aaaaaaaaaaaaa    l::::l       C:::::C       CCCCCC  P::::P     P:::::P W:::::W           WWWWW           W:::::W          ddddddddd:::::d     eeeeeeeeeeee        ssssssssss   iiiiiii    ggggggggg   gggggnnnn  nnnnnnnn         wwwwwww           wwwww           wwwwwwwiiiiiii ttttttt:::::ttttttt     h::::h hhhhh              aaaaaaaaaaaaa   rrrrr   rrrrrrrrr       cccccccccccccccc    ssssssssss   
+          A:::::A:::::A          u::::u    u::::u  t:::::::::::::::::t     oo:::::::::::oo  mm:::::::m  m:::::::mm   a::::::::::::a  t:::::::::::::::::t    i:::::i   cc:::::::::::::::c  a::::::::::::a   l::::l      C:::::C                P::::P     P:::::P  W:::::W         W:::::W         W:::::W         dd::::::::::::::d   ee::::::::::::ee    ss::::::::::s  i:::::i   g:::::::::ggg::::gn:::nn::::::::nn        w:::::w         w:::::w         w:::::w i:::::i t:::::::::::::::::t     h::::hh:::::hhh           a::::::::::::a  r::::rrr:::::::::r    cc:::::::::::::::c  ss::::::::::s  
+         A:::::A A:::::A         u::::u    u::::u  t:::::::::::::::::t    o:::::::::::::::om::::::::::mm::::::::::m  aaaaaaaaa:::::a t:::::::::::::::::t     i::::i  c:::::::::::::::::c  aaaaaaaaa:::::a  l::::l      C:::::C                P::::PPPPPP:::::P    W:::::W       W:::::::W       W:::::W         d::::::::::::::::d  e::::::eeeee:::::eess:::::::::::::s  i::::i  g:::::::::::::::::gn::::::::::::::nn        w:::::w       w:::::::w       w:::::w   i::::i t:::::::::::::::::t     h::::::::::::::hh         aaaaaaaaa:::::a r:::::::::::::::::r  c:::::::::::::::::css:::::::::::::s 
+        A:::::A   A:::::A        u::::u    u::::u  tttttt:::::::tttttt    o:::::ooooo:::::om::::::::::::::::::::::m           a::::a tttttt:::::::tttttt     i::::i c:::::::cccccc:::::c           a::::a  l::::l      C:::::C                P:::::::::::::PP      W:::::W     W:::::::::W     W:::::W         d:::::::ddddd:::::d e::::::e     e:::::es::::::ssss:::::s i::::i g::::::ggggg::::::ggnn:::::::::::::::n        w:::::w     w:::::::::w     w:::::w    i::::i tttttt:::::::tttttt     h:::::::hhh::::::h                 a::::a rr::::::rrrrr::::::rc:::::::cccccc:::::cs::::::ssss:::::s
+       A:::::A     A:::::A       u::::u    u::::u        t:::::t          o::::o     o::::om:::::mmm::::::mmm:::::m    aaaaaaa:::::a       t:::::t           i::::i c::::::c     ccccccc    aaaaaaa:::::a  l::::l      C:::::C                P::::PPPPPPPPP         W:::::W   W:::::W:::::W   W:::::W          d::::::d    d:::::d e:::::::eeeee::::::e s:::::s  ssssss  i::::i g:::::g     g:::::g   n:::::nnnn:::::n         w:::::w   w:::::w:::::w   w:::::w     i::::i       t:::::t           h::::::h   h::::::h         aaaaaaa:::::a  r:::::r     r:::::rc::::::c     ccccccc s:::::s  ssssss 
+      A:::::AAAAAAAAA:::::A      u::::u    u::::u        t:::::t          o::::o     o::::om::::m   m::::m   m::::m  aa::::::::::::a       t:::::t           i::::i c:::::c               aa::::::::::::a  l::::l      C:::::C                P::::P                  W:::::W W:::::W W:::::W W:::::W           d:::::d     d:::::d e:::::::::::::::::e    s::::::s       i::::i g:::::g     g:::::g   n::::n    n::::n          w:::::w w:::::w w:::::w w:::::w      i::::i       t:::::t           h:::::h     h:::::h       aa::::::::::::a  r:::::r     rrrrrrrc:::::c                s::::::s      
+     A:::::::::::::::::::::A     u::::u    u::::u        t:::::t          o::::o     o::::om::::m   m::::m   m::::m a::::aaaa::::::a       t:::::t           i::::i c:::::c              a::::aaaa::::::a  l::::l      C:::::C                P::::P                   W:::::W:::::W   W:::::W:::::W            d:::::d     d:::::d e::::::eeeeeeeeeee        s::::::s    i::::i g:::::g     g:::::g   n::::n    n::::n           w:::::w:::::w   w:::::w:::::w       i::::i       t:::::t           h:::::h     h:::::h      a::::aaaa::::::a  r:::::r            c:::::c                   s::::::s   
+    A:::::AAAAAAAAAAAAA:::::A    u:::::uuuu:::::u        t:::::t    tttttto::::o     o::::om::::m   m::::m   m::::ma::::a    a:::::a       t:::::t    tttttt i::::i c::::::c     ccccccca::::a    a:::::a  l::::l       C:::::C       CCCCCC  P::::P                    W:::::::::W     W:::::::::W             d:::::d     d:::::d e:::::::e           ssssss   s:::::s  i::::i g::::::g    g:::::g   n::::n    n::::n            w:::::::::w     w:::::::::w        i::::i       t:::::t    tttttt h:::::h     h:::::h     a::::a    a:::::a  r:::::r            c::::::c     cccccccssssss   s:::::s 
+   A:::::A             A:::::A   u:::::::::::::::uu      t::::::tttt:::::to:::::ooooo:::::om::::m   m::::m   m::::ma::::a    a:::::a       t::::::tttt:::::ti::::::ic:::::::cccccc:::::ca::::a    a:::::a l::::::l       C:::::CCCCCCCC::::CPP::::::PP                   W:::::::W       W:::::::W              d::::::ddddd::::::dde::::::::e          s:::::ssss::::::si::::::ig:::::::ggggg:::::g   n::::n    n::::n             w:::::::w       w:::::::w        i::::::i      t::::::tttt:::::t h:::::h     h:::::h     a::::a    a:::::a  r:::::r            c:::::::cccccc:::::cs:::::ssss::::::s
+  A:::::A               A:::::A   u:::::::::::::::u      tt::::::::::::::to:::::::::::::::om::::m   m::::m   m::::ma:::::aaaa::::::a       tt::::::::::::::ti::::::i c:::::::::::::::::ca:::::aaaa::::::a l::::::l        CC:::::::::::::::CP::::::::P                    W:::::W         W:::::W                d:::::::::::::::::d e::::::::eeeeeeee  s::::::::::::::s i::::::i g::::::::::::::::g   n::::n    n::::n              w:::::w         w:::::w         i::::::i      tt::::::::::::::t h:::::h     h:::::h     a:::::aaaa::::::a  r:::::r             c:::::::::::::::::cs::::::::::::::s 
+ A:::::A                 A:::::A   uu::::::::uu:::u        tt:::::::::::tt oo:::::::::::oo m::::m   m::::m   m::::m a::::::::::aa:::a        tt:::::::::::tti::::::i  cc:::::::::::::::c a::::::::::aa:::al::::::l          CCC::::::::::::CP::::::::P                     W:::W           W:::W                  d:::::::::ddd::::d  ee:::::::::::::e   s:::::::::::ss  i::::::i  gg::::::::::::::g   n::::n    n::::n               w:::w           w:::w          i::::::i        tt:::::::::::tt h:::::h     h:::::h      a::::::::::aa:::a r:::::r              cc:::::::::::::::c s:::::::::::ss  
+AAAAAAA                   AAAAAAA    uuuuuuuu  uuuu          ttttttttttt     ooooooooooo   mmmmmm   mmmmmm   mmmmmm  aaaaaaaaaa  aaaa          ttttttttttt  iiiiiiii    cccccccccccccccc  aaaaaaaaaa  aaaallllllll             CCCCCCCCCCCCCPPPPPPPPPP                      WWW             WWW                    ddddddddd   ddddd    eeeeeeeeeeeeee    sssssssssss    iiiiiiii    gggggggg::::::g   nnnnnn    nnnnnn                www             www           iiiiiiii          ttttttttttt   hhhhhhh     hhhhhhh       aaaaaaaaaa  aaaa rrrrrrr                cccccccccccccccc  sssssssssss    
+
+        """
+        mlength = 800
+        mwidth = 300
+        endlength = 1400
+        endx = x2+3*self.feedlength+3*mwidth+endlength
+
+        part2 = CPW([[x2,y2],[x2+3*self.feedlength,y2],[x2+3*self.feedlength,y2-mlength],[x2+3*self.feedlength+mwidth,y2-mlength],
+            [x2+3*self.feedlength+mwidth,y2],[x2+3*self.feedlength+2*mwidth,y2],[x2+3*self.feedlength+2*mwidth,y2-mlength],
+            [x2+3*self.feedlength+3*mwidth,y2-mlength],[x2+3*self.feedlength+3*mwidth,y2],[endx,y2]],
+            layer=self.layer_bottom,pin=self.centerwidth,gap=self.gapwidth,turn_radius = mwidth/2.)
         
-        
-############ END OF WORKZONE    
+        # Create hole at the end
+        holex0 = endx
+        holey0 = y2
+        holemarker = self.holemarker
+        if self.gapwidth!=0:
+            # Add hole for gJJ
+            gJJ_box = cad.core.Cell('JJ BOX')
+            gJJ_box.add(cad.shapes.Rectangle((holex0, holey0-hole[1]/2),(holex0+hole[0],holey0+hole[1]/2)))
+            # Add marker for gJJ
+            if holemarker == True:
+                box1=cad.shapes.Rectangle((holex0+5,holey0+40),(holex0+10,holey0+45))
+                box2=cad.shapes.Rectangle((holex0+10,holey0+35),(holex0+15,holey0+40))
+                gJJ_box.add(box1)
+                gJJ_box.add(box2)
+                gJJ_box.add(cad.utils.reflect(box1,'x',origin=(holex0+hole[0]/2,holey0)))
+                gJJ_box.add(cad.utils.reflect(box2,'x',origin=(holex0+hole[0]/2,holey0)))
+                gJJ_box.add(cad.utils.reflect(box1,'y',origin=(holex0+hole[0]/2,holey0)))
+                gJJ_box.add(cad.utils.reflect(box2,'y',origin=(holex0+hole[0]/2,holey0)))
+                gJJ_box.add(cad.utils.rotate(box1,180,center=(holex0+hole[0]/2,holey0)))
+                gJJ_box.add(cad.utils.rotate(box2,180,center=(holex0+hole[0]/2,holey0)))
+        endhole = holex0+hole[0]
+
+
+        for toadd in [part1,shunt,part2,gJJ_box]:
+            self.bias_cell.add(toadd)
+
+        return self.bias_cell
     
+    def route_CPW(self,coords,pin,gap,turnradius=150,layer=self.layer_bottom): # TODO
+        """
+        Routes a CPW from (coords[0],coords[1]) to (coords[2],coords[3])
+        """
+
+        CPWcell = cad.core.Cell('CPW')
+
+        return CPWcell
+
+    def fit_CPW(self,x0,y0,length,xspace=6000,yspace=800,pin=12.5,gap=5,turnradius=150,layer=self.layer_bottom,orientation='hor',minrad=50): # TODO
+        """
+        Calculates the required number of arcs to fit the CPW into the available space
+
+        """
+
+        CPWcell = cad.core.Cell('CPW')
+
+        if length < xspace:
+            cpw = CPW([[x0,y0],[x0+length,y0]],pin=pin,gap=gap,layer=layer)
+        else:
+
+
+        mlength = 800
+        mwidth = 300
+        endlength = 1400
+        endx = x2+3*self.feedlength+3*mwidth+endlength
+
+        part2 = CPW([[x2,y2],[x2+3*self.feedlength,y2],[x2+3*self.feedlength,y2-mlength],[x2+3*self.feedlength+mwidth,y2-mlength],
+            [x2+3*self.feedlength+mwidth,y2],[x2+3*self.feedlength+2*mwidth,y2],[x2+3*self.feedlength+2*mwidth,y2-mlength],
+            [x2+3*self.feedlength+3*mwidth,y2-mlength],[x2+3*self.feedlength+3*mwidth,y2],[endx,y2]],
+            layer=self.layer_bottom,pin=self.centerwidth,gap=self.gapwidth,turn_radius = mwidth/2.)
+
+        return CPWcell
+
+
     def gen_shunt_full(self,pos):
         """
         Creates a shunt capacitor from center conductor to ground
@@ -118,8 +211,9 @@ class RFShuntGate():
 
         shuntcell = cad.core.Cell('SHUNT')
         shuntbase = self.gen_shunt_base((x0,y0))
-        shunttop = self.gen_shunt_top((x0+self.gapwidth+self.shunt[0]/2-self.shunt[3]/2,y0+self.gapwidth+self.centerwidth/2-self.shunt[4]/2))
-        shuntins = self.gen_shunt_ins((x0+self.gapwidth+self.shunt[0]/2-self.shunt[3]/2,y0+self.gapwidth+self.centerwidth/2-self.shunt[4]/2))
+        shunttop = self.gen_shunt_top((x0+self.gapwidth+self.shunt[0]/2-self.shunt[4]/2,y0+self.gapwidth+self.centerwidth/2-self.shunt[5]/2),shunttype=self.shunttype)
+        shuntins = self.gen_shunt_ins((x0+self.gapwidth-(self.shunt[2]-self.shunt[0])/2,y0+self.gapwidth+self.centerwidth/2-self.shunt[3]/2))
+        print 'x0',x0,'y0',y0
         [shuntcell.add(toadd) for toadd in [shuntbase, shuntins, shunttop]]
         return shuntcell
 
@@ -154,14 +248,14 @@ class RFShuntGate():
         y0 = pos[1]
 
         shuntins = cad.core.Cell('shuntins')
-        shuntpoints = [(x0-self.shunt[2],y0-self.shunt[2]),
-                    (x0+self.shunt[3]+self.shunt[2],y0+self.shunt[4]+self.shunt[2])]
+        shuntpoints = [(x0,y0),
+                    (x0+self.shunt[2],y0+self.shunt[3])]
         shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_ins)
         shuntins.add(shunt)
         return shuntins
 
 
-    def gen_shunt_top(self,pos):
+    def gen_shunt_top(self,pos,shunttype):
         """
         Returns top plate for shunt capacitors
         """
@@ -169,14 +263,31 @@ class RFShuntGate():
         y0 = pos[1]
 
         shunttop = cad.core.Cell('shunttop')
-        shuntpoints = [(x0,y0),
-                    (x0+self.shunt[3],y0+self.shunt[4])]
-        shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_top)
-        shunttop.add(shunt)
-        return shunttop
+        if shunttype==0:
+            shuntpoints = [(x0,y0),
+                        (x0+self.shunt[4],y0+self.shunt[5])]
+            shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_top)
+            
+            shunttop.add(shunt)
+
+        elif shunttype==1:
+            dy = self.centerwidth+self.gapwidth*1.4
+            dx = 30
+            shuntpoints = [(x0-dx,y0),(x0-dx,y0+self.shunt[5]/2-dy),(x0,y0+self.shunt[5]/2-dy),(x0,y0+self.shunt[5]/2),
+                            (x0+self.shunt[4]/2,y0+self.shunt[5]/2),(x0+self.shunt[4]/2,y0)]
+            shunt1 = cad.core.Boundary(shuntpoints, layer=self.layer_top)
+            shunt2 = cad.utils.reflect(shunt1,'y',origin=(x0+self.shunt[4]/2,y0+self.shunt[5]/2))
+            shunt3 = cad.utils.reflect(shunt1,'x',origin=(x0+self.shunt[4]/2,y0+self.shunt[5]/2))
+            shunt4 = cad.utils.rotate(shunt1,180,center=(x0+self.shunt[4]/2,y0+self.shunt[5]/2))
+            for toadd in [shunt1,shunt2,shunt3,shunt4]:
+                shunttop.add(toadd)
+        else:
+            raise KeyError('shunttype has to be 0 or 1')
         
+        return shunttop
+
     
-     def gen_label(self,pos):
+    def gen_label(self,pos):
         """
         Generate label with resonator length
         """
@@ -186,7 +297,23 @@ class RFShuntGate():
         labelcell.add(label)
         return labelcell
                     
-################################333    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# TODO: Below here is outdated and has to be removed                    
+################################    
     def gen_cavities(self,gapwidth=0):
         '''
         Create the individual cavity. Gapwidth = 0: center conductor. Finite gapwidth: Gaps around
@@ -194,10 +321,6 @@ class RFShuntGate():
 
         length = self.length
         centerwidth = self.centerwidth + 2*gapwidth
-        shunts = self.shunts
-
-        if shunts!=1 and shunts!=2:
-            raise ValueError('Number of shunts has to be either 1 or 2!')
 
         center = self.center
 
@@ -282,7 +405,7 @@ class RFShuntGate():
         endhole = holex0+holedim[0]
 
         # Create second shunt (optional)
-        if shunts==2:
+        if shuntgate:
             leadout = 125
             shunt2 = self.gen_shunt((endhole,70),leadout,gap=gapwidth)
             self.endshunt = shunt2[5]

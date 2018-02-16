@@ -1,7 +1,7 @@
 import numpy as np
 from stcad.source_dev.chip import Base_Chip
 from stcad.source_dev.utilities import double_line_polygon,double_arc_polygon,line_polygon
-from stcad.source_dev.meandering_line import MeanderingLine
+#from stcad.source_dev.meandering_line import MeanderingLine
 import gdsCAD as cad
 import copy
 import numpy as np
@@ -148,4 +148,4 @@ if __name__ == '__main__':
   cp.add_launcher('beginning')
   cp.add_open('end')
   chip.add_component(cp, (0,0))
-  chip.save_to_gds(show=True, save=True,loc='')
+  chip.save_to_gds(show=True, save=False,loc='')
