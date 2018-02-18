@@ -1,13 +1,9 @@
-#*** BROKEN
-
 import numpy as np
 import gdsCAD as cad
 from CPW import *
 
 class RFShuntGate():
     '''
-    *** BROKEN
-    *** Needs to be updated to the standard format of rf_dcbias.py
     Class for RF DC bias cavities with gate
     Initial values:
         - shuntgate = False
@@ -34,6 +30,7 @@ class RFShuntGate():
         self.layer_top = 2
         self.layer_ins = 3
         
+        self.cpwlist = []
 
         # hard coded values
         self.radius = 1000
@@ -53,7 +50,7 @@ class RFShuntGate():
 
         # Generate first cavity
         rfcell = cad.core.Cell('RESONATOR')
-        resonator = self.gen_cavity(x0,y0,feedlength,self.hole,self.shuntgate)
+        resonator = self.gen_cavity_new(x0,y0,feedlength,self.hole,self.shuntgate)
         rfcell.add(resonator)
 
         self.cell.add(rfcell)
@@ -77,7 +74,7 @@ class RFShuntGate():
 
         # Generate first cavity
         rfcell = cad.core.Cell('RESONATOR')
-        resonator = self.gen_cavity(x0,y0,feedlength,self.hole,self.shuntgate)
+        resonator = self.gen_cavity_new(x0,y0,feedlength,self.hole,self.shuntgate)
         rfcell.add(resonator)
 
         if loc == 'bottom':
@@ -88,8 +85,9 @@ class RFShuntGate():
             raise ValueError("loc(ation) is invalid. Allowed values are bottom, top.")
 
         return self.cell
-        
-    def gen_cavity(self, x0, y0, feedlength, hole, shuntgate):
+    
+
+    def gen_cavity_new(self, x0, y0, feedlength, hole, shuntgate):
         """
         Generate baselayer with shunted gate (optional)
         """
@@ -100,47 +98,19 @@ class RFShuntGate():
         part1 = CPW([[x0,y0],[x0+feedlength,y0]], layer=self.layer_bottom, pin=self.centerwidth,gap=self.gapwidth)        
         
         # Create shunt
-        x1 = x0+feedlength
-        y1 = y0-self.centerwidth/2-self.gapwidth
+        x1 = x0+feedlength+self.gapwidth/2
+        y1 = y0#-self.centerwidth/2-self.gapwidth
         shunt = self.gen_shunt_full((x1,y1))
 
         # Connect shunt to end
-        x2 = x1+self.shunt[0]+2*self.gapwidth
+        x2 = x1+self.shunt[0]+self.gapwidth/2
         y2 = y0
 
-        ############ TODO
-        """
-                                                                                                                                                                                                                                                                                                                                    dddddddd                                                                                                                                                                                                                                                                    
-               AAA                                          tttt                                                                              tttt            iiii                                        lllllll              CCCCCCCCCCCCCPPPPPPPPPPPPPPPPP   WWWWWWWW                           WWWWWWWW                 d::::::d                                       iiii                                                                                        iiii           tttt          hhhhhhh                                                                                             
-              A:::A                                      ttt:::t                                                                           ttt:::t           i::::i                                       l:::::l           CCC::::::::::::CP::::::::::::::::P  W::::::W                           W::::::W                 d::::::d                                      i::::i                                                                                      i::::i       ttt:::t          h:::::h                                                                                             
-             A:::::A                                     t:::::t                                                                           t:::::t            iiii                                        l:::::l         CC:::::::::::::::CP::::::PPPPPP:::::P W::::::W                           W::::::W                 d::::::d                                       iiii                                                                                        iiii        t:::::t          h:::::h                                                                                             
-            A:::::::A                                    t:::::t                                                                           t:::::t                                                        l:::::l        C:::::CCCCCCCC::::CPP:::::P     P:::::PW::::::W                           W::::::W                 d:::::d                                                                                                                                                t:::::t          h:::::h                                                                                             
-           A:::::::::A           uuuuuu    uuuuuu  ttttttt:::::ttttttt       ooooooooooo      mmmmmmm    mmmmmmm     aaaaaaaaaaaaa   ttttttt:::::ttttttt    iiiiiii     cccccccccccccccc  aaaaaaaaaaaaa    l::::l       C:::::C       CCCCCC  P::::P     P:::::P W:::::W           WWWWW           W:::::W          ddddddddd:::::d     eeeeeeeeeeee        ssssssssss   iiiiiii    ggggggggg   gggggnnnn  nnnnnnnn         wwwwwww           wwwww           wwwwwwwiiiiiii ttttttt:::::ttttttt     h::::h hhhhh              aaaaaaaaaaaaa   rrrrr   rrrrrrrrr       cccccccccccccccc    ssssssssss   
-          A:::::A:::::A          u::::u    u::::u  t:::::::::::::::::t     oo:::::::::::oo  mm:::::::m  m:::::::mm   a::::::::::::a  t:::::::::::::::::t    i:::::i   cc:::::::::::::::c  a::::::::::::a   l::::l      C:::::C                P::::P     P:::::P  W:::::W         W:::::W         W:::::W         dd::::::::::::::d   ee::::::::::::ee    ss::::::::::s  i:::::i   g:::::::::ggg::::gn:::nn::::::::nn        w:::::w         w:::::w         w:::::w i:::::i t:::::::::::::::::t     h::::hh:::::hhh           a::::::::::::a  r::::rrr:::::::::r    cc:::::::::::::::c  ss::::::::::s  
-         A:::::A A:::::A         u::::u    u::::u  t:::::::::::::::::t    o:::::::::::::::om::::::::::mm::::::::::m  aaaaaaaaa:::::a t:::::::::::::::::t     i::::i  c:::::::::::::::::c  aaaaaaaaa:::::a  l::::l      C:::::C                P::::PPPPPP:::::P    W:::::W       W:::::::W       W:::::W         d::::::::::::::::d  e::::::eeeee:::::eess:::::::::::::s  i::::i  g:::::::::::::::::gn::::::::::::::nn        w:::::w       w:::::::w       w:::::w   i::::i t:::::::::::::::::t     h::::::::::::::hh         aaaaaaaaa:::::a r:::::::::::::::::r  c:::::::::::::::::css:::::::::::::s 
-        A:::::A   A:::::A        u::::u    u::::u  tttttt:::::::tttttt    o:::::ooooo:::::om::::::::::::::::::::::m           a::::a tttttt:::::::tttttt     i::::i c:::::::cccccc:::::c           a::::a  l::::l      C:::::C                P:::::::::::::PP      W:::::W     W:::::::::W     W:::::W         d:::::::ddddd:::::d e::::::e     e:::::es::::::ssss:::::s i::::i g::::::ggggg::::::ggnn:::::::::::::::n        w:::::w     w:::::::::w     w:::::w    i::::i tttttt:::::::tttttt     h:::::::hhh::::::h                 a::::a rr::::::rrrrr::::::rc:::::::cccccc:::::cs::::::ssss:::::s
-       A:::::A     A:::::A       u::::u    u::::u        t:::::t          o::::o     o::::om:::::mmm::::::mmm:::::m    aaaaaaa:::::a       t:::::t           i::::i c::::::c     ccccccc    aaaaaaa:::::a  l::::l      C:::::C                P::::PPPPPPPPP         W:::::W   W:::::W:::::W   W:::::W          d::::::d    d:::::d e:::::::eeeee::::::e s:::::s  ssssss  i::::i g:::::g     g:::::g   n:::::nnnn:::::n         w:::::w   w:::::w:::::w   w:::::w     i::::i       t:::::t           h::::::h   h::::::h         aaaaaaa:::::a  r:::::r     r:::::rc::::::c     ccccccc s:::::s  ssssss 
-      A:::::AAAAAAAAA:::::A      u::::u    u::::u        t:::::t          o::::o     o::::om::::m   m::::m   m::::m  aa::::::::::::a       t:::::t           i::::i c:::::c               aa::::::::::::a  l::::l      C:::::C                P::::P                  W:::::W W:::::W W:::::W W:::::W           d:::::d     d:::::d e:::::::::::::::::e    s::::::s       i::::i g:::::g     g:::::g   n::::n    n::::n          w:::::w w:::::w w:::::w w:::::w      i::::i       t:::::t           h:::::h     h:::::h       aa::::::::::::a  r:::::r     rrrrrrrc:::::c                s::::::s      
-     A:::::::::::::::::::::A     u::::u    u::::u        t:::::t          o::::o     o::::om::::m   m::::m   m::::m a::::aaaa::::::a       t:::::t           i::::i c:::::c              a::::aaaa::::::a  l::::l      C:::::C                P::::P                   W:::::W:::::W   W:::::W:::::W            d:::::d     d:::::d e::::::eeeeeeeeeee        s::::::s    i::::i g:::::g     g:::::g   n::::n    n::::n           w:::::w:::::w   w:::::w:::::w       i::::i       t:::::t           h:::::h     h:::::h      a::::aaaa::::::a  r:::::r            c:::::c                   s::::::s   
-    A:::::AAAAAAAAAAAAA:::::A    u:::::uuuu:::::u        t:::::t    tttttto::::o     o::::om::::m   m::::m   m::::ma::::a    a:::::a       t:::::t    tttttt i::::i c::::::c     ccccccca::::a    a:::::a  l::::l       C:::::C       CCCCCC  P::::P                    W:::::::::W     W:::::::::W             d:::::d     d:::::d e:::::::e           ssssss   s:::::s  i::::i g::::::g    g:::::g   n::::n    n::::n            w:::::::::w     w:::::::::w        i::::i       t:::::t    tttttt h:::::h     h:::::h     a::::a    a:::::a  r:::::r            c::::::c     cccccccssssss   s:::::s 
-   A:::::A             A:::::A   u:::::::::::::::uu      t::::::tttt:::::to:::::ooooo:::::om::::m   m::::m   m::::ma::::a    a:::::a       t::::::tttt:::::ti::::::ic:::::::cccccc:::::ca::::a    a:::::a l::::::l       C:::::CCCCCCCC::::CPP::::::PP                   W:::::::W       W:::::::W              d::::::ddddd::::::dde::::::::e          s:::::ssss::::::si::::::ig:::::::ggggg:::::g   n::::n    n::::n             w:::::::w       w:::::::w        i::::::i      t::::::tttt:::::t h:::::h     h:::::h     a::::a    a:::::a  r:::::r            c:::::::cccccc:::::cs:::::ssss::::::s
-  A:::::A               A:::::A   u:::::::::::::::u      tt::::::::::::::to:::::::::::::::om::::m   m::::m   m::::ma:::::aaaa::::::a       tt::::::::::::::ti::::::i c:::::::::::::::::ca:::::aaaa::::::a l::::::l        CC:::::::::::::::CP::::::::P                    W:::::W         W:::::W                d:::::::::::::::::d e::::::::eeeeeeee  s::::::::::::::s i::::::i g::::::::::::::::g   n::::n    n::::n              w:::::w         w:::::w         i::::::i      tt::::::::::::::t h:::::h     h:::::h     a:::::aaaa::::::a  r:::::r             c:::::::::::::::::cs::::::::::::::s 
- A:::::A                 A:::::A   uu::::::::uu:::u        tt:::::::::::tt oo:::::::::::oo m::::m   m::::m   m::::m a::::::::::aa:::a        tt:::::::::::tti::::::i  cc:::::::::::::::c a::::::::::aa:::al::::::l          CCC::::::::::::CP::::::::P                     W:::W           W:::W                  d:::::::::ddd::::d  ee:::::::::::::e   s:::::::::::ss  i::::::i  gg::::::::::::::g   n::::n    n::::n               w:::w           w:::w          i::::::i        tt:::::::::::tt h:::::h     h:::::h      a::::::::::aa:::a r:::::r              cc:::::::::::::::c s:::::::::::ss  
-AAAAAAA                   AAAAAAA    uuuuuuuu  uuuu          ttttttttttt     ooooooooooo   mmmmmm   mmmmmm   mmmmmm  aaaaaaaaaa  aaaa          ttttttttttt  iiiiiiii    cccccccccccccccc  aaaaaaaaaa  aaaallllllll             CCCCCCCCCCCCCPPPPPPPPPP                      WWW             WWW                    ddddddddd   ddddd    eeeeeeeeeeeeee    sssssssssss    iiiiiiii    gggggggg::::::g   nnnnnn    nnnnnn                www             www           iiiiiiii          ttttttttttt   hhhhhhh     hhhhhhh       aaaaaaaaaa  aaaa rrrrrrr                cccccccccccccccc  sssssssssss    
+        xspace = self.xmax
+        part2 = self.fit_CPW(x2,y2,self.length,xspace=xspace,gap=self.gapwidth,pin=self.centerwidth)
 
-        """
-        mlength = 800
-        mwidth = 300
-        endlength = 1400
-        endx = x2+3*self.feedlength+3*mwidth+endlength
-
-        part2 = CPW([[x2,y2],[x2+3*self.feedlength,y2],[x2+3*self.feedlength,y2-mlength],[x2+3*self.feedlength+mwidth,y2-mlength],
-            [x2+3*self.feedlength+mwidth,y2],[x2+3*self.feedlength+2*mwidth,y2],[x2+3*self.feedlength+2*mwidth,y2-mlength],
-            [x2+3*self.feedlength+3*mwidth,y2-mlength],[x2+3*self.feedlength+3*mwidth,y2],[endx,y2]],
-            layer=self.layer_bottom,pin=self.centerwidth,gap=self.gapwidth,turn_radius = mwidth/2.)
-        
         # Create hole at the end
-        holex0 = endx
+        holex0 = self.cpwlist[-1][0]
         holey0 = y2
         holemarker = self.holemarker
         if self.gapwidth!=0:
@@ -166,44 +136,69 @@ AAAAAAA                   AAAAAAA    uuuuuuuu  uuuu          ttttttttttt     ooo
             self.bias_cell.add(toadd)
 
         return self.bias_cell
-    
-    def route_CPW(self,coords,pin,gap,turnradius=150,layer=self.layer_bottom): # TODO
-        """
-        Routes a CPW from (coords[0],coords[1]) to (coords[2],coords[3])
-        """
 
-        CPWcell = cad.core.Cell('CPW')
 
-        return CPWcell
+    def resl1(self,x,n,r):
+        # horizontal length
+        return (x-4*n*r)/2.0
 
-    def fit_CPW(self,x0,y0,length,xspace=6000,yspace=800,pin=12.5,gap=5,turnradius=150,layer=self.layer_bottom,orientation='hor',minrad=50): # TODO
+
+    def resl2(self,l,x,n,r):
+        # vertical length
+        return (l-x-4*n*r*(np.pi-1))/(2*n)
+
+
+    def fit_CPW(self,x0,y0,length,xspace=6000,yspace=800,pin=12.5,gap=5,turnradius=150,layer=1,minrad=150): # TODO
         """
         Calculates the required number of arcs to fit the CPW into the available space
-
         """
 
         CPWcell = cad.core.Cell('CPW')
 
         if length <= xspace:
+            # first case: resonator fits into xspace
             if length < xspace:
                 raise Warning('Distance between launchers smaller than resonator length. Maybe change launcher positions and try again.')
             cpw = CPW([[x0,y0],[x0+length,y0]],pin=pin,gap=gap,layer=layer)
+            nbends = 0
         else:
-            # first case: only slightly longer than distance
-            if xspace-4*minrad<length-4*np.pi*minrad:
-                return KeyError('Minimum radius too small. Change launcher positions and try again.')
-            elif xspace-4*turnradius<length-4*np.pi*turnradius+2*yspace:
-                r0=minrad
+            # second case: only slightly longer than distance
+            r = (length-xspace)/4/(np.pi-1)
+            if r < minrad:
+                raise ValueError('Minimum radius too small. Change launcher positions and try again.')
+            elif r < yspace:
+                l1 = (length-4*np.pi*r)/2
+                self.cpwlist = [[x0,y0],[x0+l1+r,y0],[x0+l1+r,y0-2*r],[x0+l1+3*r,y0-2*r],[x0+l1+3*r,y0],[x0+l1+4*r+l1,y0]]
+                cpw = CPW(self.cpwlist,pin=pin,gap=gap,layer=layer,turn_radius=r)
+                nbends = 1
+            else:
+                #if r > yspace:
+                # third and higher cases: needs bend+length
+                n = 1
+                l1 = self.resl1(xspace,n,turnradius)
+                l2 = self.resl2(length,xspace,n,turnradius)
+                while 2*turnradius+l2 > yspace:
+                    # increase number of bends until vertical length fits into yspace
+                    n+=1
+                    l1 = self.resl1(xspace,n,turnradius)
+                    l2 = self.resl2(length,xspace,n,turnradius)
+                nbends = n
+                cpwlist = [[x0,y0],[x0+l1,y0]]
+                for m in range(n):
+                    cpwlist.append([cpwlist[-1][0]+turnradius,y0])
+                    cpwlist.append([cpwlist[-1][0],y0-l2-2*turnradius])
+                    cpwlist.append([cpwlist[-1][0]+2*turnradius,y0-l2-2*turnradius])
+                    cpwlist.append([cpwlist[-1][0],y0])
+                    cpwlist.append([cpwlist[-1][0]+turnradius,y0])
+                cpwlist.append([cpwlist[-1][0]+l1,y0])
 
-        mlength = 800
-        mwidth = 300
-        endlength = 1400
-        endx = x2+3*self.feedlength+3*mwidth+endlength
+                self.cpwlist = cpwlist
+                cpw = CPW(self.cpwlist,pin=pin,gap=gap,turn_radius=turnradius,layer=layer)
+                # TODO for some reason this leads to back-bended CPWs??
 
-        part2 = CPW([[x2,y2],[x2+3*self.feedlength,y2],[x2+3*self.feedlength,y2-mlength],[x2+3*self.feedlength+mwidth,y2-mlength],
-            [x2+3*self.feedlength+mwidth,y2],[x2+3*self.feedlength+2*mwidth,y2],[x2+3*self.feedlength+2*mwidth,y2-mlength],
-            [x2+3*self.feedlength+3*mwidth,y2-mlength],[x2+3*self.feedlength+3*mwidth,y2],[endx,y2]],
-            layer=self.layer_bottom,pin=self.centerwidth,gap=self.gapwidth,turn_radius = mwidth/2.)
+        print 'Resonator length:', cpw.length
+        print 'Number of bends:', nbends
+        CPWcell.add(cpw)
 
         return CPWcell
 
@@ -217,11 +212,12 @@ AAAAAAA                   AAAAAAA    uuuuuuuu  uuuu          ttttttttttt     ooo
 
         shuntcell = cad.core.Cell('SHUNT')
         shuntbase = self.gen_shunt_base((x0,y0))
-        shunttop = self.gen_shunt_top((x0+self.gapwidth+self.shunt[0]/2-self.shunt[4]/2,y0+self.gapwidth+self.centerwidth/2-self.shunt[5]/2),shunttype=self.shunttype)
-        shuntins = self.gen_shunt_ins((x0+self.gapwidth-(self.shunt[2]-self.shunt[0])/2,y0+self.gapwidth+self.centerwidth/2-self.shunt[3]/2))
-        print 'x0',x0,'y0',y0
+        shunttop = self.gen_shunt_top((x0+self.gapwidth/2+self.shunt[0]/2-self.shunt[4]/2,y0-self.shunt[5]/2),shunttype=self.shunttype)
+        shuntins = self.gen_shunt_ins((x0+self.gapwidth/2-(self.shunt[2]-self.shunt[0])/2,y0-self.shunt[3]/2))
+
         [shuntcell.add(toadd) for toadd in [shuntbase, shuntins, shunttop]]
         return shuntcell
+
 
     def gen_shunt_base(self,pos):
         """
@@ -231,6 +227,7 @@ AAAAAAA                   AAAAAAA    uuuuuuuu  uuuu          ttttttttttt     ooo
         y0 = pos[1]
 
         shuntbase = cad.core.Cell('shuntbase')
+        '''
         shuntpoints = [(x0, y0+self.gapwidth),
                      (x0, y0-self.shunt[1]/2.),
                      (x0+self.shunt[0]+2*self.gapwidth, y0-self.shunt[1]/2.),
@@ -240,7 +237,11 @@ AAAAAAA                   AAAAAAA    uuuuuuuu  uuuu          ttttttttttt     ooo
                      (x0+self.gapwidth, y0+self.gapwidth-self.shunt[1]/2.),
                      (x0+self.gapwidth, y0+self.gapwidth)]
         shunt1 = cad.core.Boundary(shuntpoints, layer=self.layer_bottom)
-        shunt11 = cad.utils.reflect(shunt1,'x',origin=(0,y0+self.gapwidth+self.centerwidth/2.))
+        '''
+        shuntpoints = [(x0,y0+self.centerwidth/2),(x0,y0+self.shunt[1]/2),
+                    (x0+self.shunt[0],y0+self.shunt[1]/2),(x0+self.shunt[0],y0+self.centerwidth/2)]
+        shunt1 = cad.core.Path(shuntpoints,self.gapwidth)
+        shunt11 = cad.utils.reflect(shunt1,'x',origin=(0,y0))#+self.gapwidth+self.centerwidth/2.))
         shuntbase.add(shunt1)
         shuntbase.add(shunt11)
         return shuntbase
@@ -319,11 +320,70 @@ AAAAAAA                   AAAAAAA    uuuuuuuu  uuuu          ttttttttttt     ooo
 
 
 # TODO: Below here is outdated and has to be removed                    
-################################    
+################################
+'''
+    def gen_cavity(self, x0, y0, feedlength, hole, shuntgate):
+        """
+        Generate baselayer with shunted gate (optional)
+        """
+
+        self.bias_cell = cad.core.Cell('RF_DC_BIAS')
+        
+        # Create feed to shunt
+        part1 = CPW([[x0,y0],[x0+feedlength,y0]], layer=self.layer_bottom, pin=self.centerwidth,gap=self.gapwidth)        
+        
+        # Create shunt
+        x1 = x0+feedlength
+        y1 = y0-self.centerwidth/2-self.gapwidth
+        shunt = self.gen_shunt_full((x1,y1))
+
+        # Connect shunt to end
+        x2 = x1+self.shunt[0]+2*self.gapwidth
+        y2 = y0
+
+        mlength = 800
+        mwidth = 300
+        endlength = 1400
+        endx = x2+3*self.feedlength+3*mwidth+endlength
+
+        part2 = CPW([[x2,y2],[x2+3*self.feedlength,y2],[x2+3*self.feedlength,y2-mlength],[x2+3*self.feedlength+mwidth,y2-mlength],
+            [x2+3*self.feedlength+mwidth,y2],[x2+3*self.feedlength+2*mwidth,y2],[x2+3*self.feedlength+2*mwidth,y2-mlength],
+            [x2+3*self.feedlength+3*mwidth,y2-mlength],[x2+3*self.feedlength+3*mwidth,y2],[endx,y2]],
+            layer=self.layer_bottom,pin=self.centerwidth,gap=self.gapwidth,turn_radius = mwidth/2.)
+        
+        # Create hole at the end
+        holex0 = endx
+        holey0 = y2
+        holemarker = self.holemarker
+        if self.gapwidth!=0:
+            # Add hole for gJJ
+            gJJ_box = cad.core.Cell('JJ BOX')
+            gJJ_box.add(cad.shapes.Rectangle((holex0, holey0-hole[1]/2),(holex0+hole[0],holey0+hole[1]/2)))
+            # Add marker for gJJ
+            if holemarker == True:
+                box1=cad.shapes.Rectangle((holex0+5,holey0+40),(holex0+10,holey0+45))
+                box2=cad.shapes.Rectangle((holex0+10,holey0+35),(holex0+15,holey0+40))
+                gJJ_box.add(box1)
+                gJJ_box.add(box2)
+                gJJ_box.add(cad.utils.reflect(box1,'x',origin=(holex0+hole[0]/2,holey0)))
+                gJJ_box.add(cad.utils.reflect(box2,'x',origin=(holex0+hole[0]/2,holey0)))
+                gJJ_box.add(cad.utils.reflect(box1,'y',origin=(holex0+hole[0]/2,holey0)))
+                gJJ_box.add(cad.utils.reflect(box2,'y',origin=(holex0+hole[0]/2,holey0)))
+                gJJ_box.add(cad.utils.rotate(box1,180,center=(holex0+hole[0]/2,holey0)))
+                gJJ_box.add(cad.utils.rotate(box2,180,center=(holex0+hole[0]/2,holey0)))
+        endhole = holex0+hole[0]
+
+
+        for toadd in [part1,shunt,part2,gJJ_box]:
+            self.bias_cell.add(toadd)
+
+        return self.bias_cell
+
+
     def gen_cavities(self,gapwidth=0):
-        '''
+        """
         Create the individual cavity. Gapwidth = 0: center conductor. Finite gapwidth: Gaps around
-        '''
+        """
 
         length = self.length
         centerwidth = self.centerwidth + 2*gapwidth
@@ -479,12 +539,12 @@ AAAAAAA                   AAAAAAA    uuuuuuuu  uuuu          ttttttttttt     ooo
         
 
     def gen_shunt(self,leadin,leadout,gap=0):
-        '''
+        """
         Create shunt capacitors
         leadin: tuple (x-coordinate, lendth)
         leadout: int length
         gap: gapwidth between center conductor and ground
-        '''
+        """
         # Connect in to shunt
         startx_in = leadin[0]   # x-coordinate
         stopx_in = startx_in+leadin[1]-gap
@@ -522,4 +582,27 @@ AAAAAAA                   AAAAAAA    uuuuuuuu  uuuu          ttttttttttt     ooo
         return (lead_in, shunt, shunt_diel, shunt_top, lead_out, stopx_out)
 
 
+    def add_arcCPW(self,coords0,pin=12.5,gap=5,radius=150,layer=1,turn='ru'): # TODO
+        """
+        makes a turn in the CPW. turn = 'dr' corresponds to Down->Right, i.e. L
+        """
+        x0, y0 = coords0[0],coords0[1]
+        if turn = 'ru':
+            arc = CPW([[x0,y0],[x0+radius,y0],[x0+radius,y0+radius]],pin=pin,gap=gap,turn_radius=radius)
+        elif turn = 'rd':
+            arc = CPW([[x0,y0],[x0+radius,y0],[x0+radius,y0-radius]],pin=pin,gap=gap,turn_radius=radius)
+        elif turn = 'ur':
+            arc = CPW([[x0,y0],[x0,y0+radius],[x0+radius,y0+radius]],pin=pin,gap=gap,turn_radius=radius)
+        elif turn = 'ul':
+            arc = CPW([[x0,y0],[x0,y0+radius],[x0-radius,y0+radius]],pin=pin,gap=gap,turn_radius=radius)
+        elif turn = 'dr':
+            arc = CPW([[x0,y0],[x0,y0-radius],[x0+radius,y0-radius]],pin=pin,gap=gap,turn_radius=radius)
+        elif turn = 'dl':
+            arc = CPW([[x0,y0],[x0,y0-radius],[x0-radius,y0-radius]],pin=pin,gap=gap,turn_radius=radius)
+        elif turn = 'lu':
+            arc = CPW([[x0,y0],[x0-radius,y0],[x0-radius,y0+radius]],pin=pin,gap=gap,turn_radius=radius)
+        elif turn = 'ld':
+            arc = CPW([[x0,y0],[x0-radius,y0],[x0-radius,y0-radius]],pin=pin,gap=gap,turn_radius=radius)
+        return arc
+'''
 
