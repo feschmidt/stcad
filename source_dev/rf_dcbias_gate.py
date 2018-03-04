@@ -1,6 +1,7 @@
 import numpy as np
 import gdsCAD as cad
 from CPW import *
+from testing_fillet import fillet
 
 class RFShuntGate():
     '''
@@ -14,6 +15,14 @@ class RFShuntGate():
         self.dict_dcbias = dict_dcbias
 
         self.xmax = dict_dcbias['xmax'] # this is the maximum length without any wiggles
+        if 'ymax' in dict_dcbias.keys():
+            self.ymax = dict_dcbias['ymax']
+        else:
+            self.ymax=1500.
+        if 'nbends' in dict_dcbias.keys():
+            self.nbends = dict_dcbias['nbends']
+        else:
+            self.nbends = 1
         self.length = dict_dcbias['length']
         self.pos = dict_dcbias['position']    # (x0,y0)
         self.feedlength = dict_dcbias['feedlength']
@@ -107,7 +116,7 @@ class RFShuntGate():
         y2 = y0
 
         xspace = self.xmax
-        part2 = self.fit_CPW(x2,y2,self.length,xspace=xspace,gap=self.gapwidth,pin=self.centerwidth)
+        part2 = self.fit_CPW(x2,y2,self.length,xspace=xspace,yspace=self.ymax,gap=self.gapwidth,pin=self.centerwidth,nbends=self.nbends)
 
         # Create hole at the end
         holex0 = self.cpwlist[-1][0]
@@ -145,10 +154,10 @@ class RFShuntGate():
 
     def resl2(self,l,x,n,r):
         # vertical length
-        return (l-x-4*n*r*(np.pi-1))/(2*n)
+        return (l-2*self.resl1(x,n,r)-n*2*np.pi*r)/2./n
 
 
-    def fit_CPW(self,x0,y0,length,xspace=6000,yspace=800,pin=12.5,gap=5,turnradius=150,layer=1,minrad=150): # TODO
+    def fit_CPW(self,x0,y0,length,xspace=6000,yspace=1500,pin=12.5,gap=5,turnradius=150,nbends=1,layer=1): # TODO
         """
         Calculates the required number of arcs to fit the CPW into the available space
         """
@@ -162,40 +171,33 @@ class RFShuntGate():
             cpw = CPW([[x0,y0],[x0+length,y0]],pin=pin,gap=gap,layer=layer)
             nbends = 0
         else:
-            # second case: only slightly longer than distance
-            r = (length-xspace)/4/(np.pi-1)
-            if r < minrad:
-                raise ValueError('Minimum radius too small. Change launcher positions and try again.')
-            elif r < yspace:
-                l1 = (length-4*np.pi*r)/2
-                self.cpwlist = [[x0,y0],[x0+l1+r,y0],[x0+l1+r,y0-2*r],[x0+l1+3*r,y0-2*r],[x0+l1+3*r,y0],[x0+l1+4*r+l1,y0]]
-                cpw = CPW(self.cpwlist,pin=pin,gap=gap,layer=layer,turn_radius=r)
-                nbends = 1
-            else:
-                #if r > yspace:
-                # third and higher cases: needs bend+length
-                n = 1
-                l1 = self.resl1(xspace,n,turnradius)
-                l2 = self.resl2(length,xspace,n,turnradius)
-                while 2*turnradius+l2 > yspace:
-                    # increase number of bends until vertical length fits into yspace
-                    n+=1
-                    l1 = self.resl1(xspace,n,turnradius)
-                    l2 = self.resl2(length,xspace,n,turnradius)
-                nbends = n
-                cpwlist = [[x0,y0],[x0+l1,y0]]
-                for m in range(n):
-                    cpwlist.append([cpwlist[-1][0]+turnradius,y0])
-                    cpwlist.append([cpwlist[-1][0],y0-l2-2*turnradius])
-                    cpwlist.append([cpwlist[-1][0]+2*turnradius,y0-l2-2*turnradius])
-                    cpwlist.append([cpwlist[-1][0],y0])
-                    cpwlist.append([cpwlist[-1][0]+turnradius,y0])
-                cpwlist.append([cpwlist[-1][0]+l1,y0])
+            l1 = self.resl1(xspace,nbends,turnradius)
+            l2 = self.resl2(length,xspace,nbends,turnradius)
+            yy = 2*turnradius+l2
+            while yy>yspace:
+                nbends+=1
+                l1 = self.resl1(xspace,nbends,turnradius)
+                l2 = self.resl2(length,xspace,nbends,turnradius)
+                yy = 2*turnradius+l2
+                if l2<0:
+                    raise ValueError('Minimum radius too small. Change launcher positions and try again.')
+                if l1<0:
+                    raise ValueError('Resonator does not fit into allocated space. Try increasing xspace or yspace.')
+            cpwlist = [[x0,y0],[x0+l1+turnradius,y0]]
+            for m in range(nbends):
+                #cpwlist.append([cpwlist[-1][0]+turnradius,y0]) # workaround to prevent CPW() from making bends in straight segments
+                cpwlist.append([cpwlist[-1][0],y0-l2-2*turnradius])
+                cpwlist.append([cpwlist[-1][0]+2*turnradius,y0-l2-2*turnradius])
+                cpwlist.append([cpwlist[-1][0],y0])
+                if m<nbends-1:
+                    cpwlist.append([cpwlist[-1][0]+2*turnradius,y0])
+            cpwlist.append([cpwlist[-1][0]+l1+turnradius,y0])
 
-                self.cpwlist = cpwlist
-                cpw = CPW(self.cpwlist,pin=pin,gap=gap,turn_radius=turnradius,layer=layer)
-                # TODO for some reason this leads to back-bended CPWs??
+            self.cpwlist = cpwlist
+            cpw = CPW(self.cpwlist,pin=pin,gap=gap,turn_radius=turnradius,layer=layer)
 
+        print 'Input length:', length
+        print 'Available xspace:', xspace
         print 'Resonator length:', cpw.length
         print 'Number of bends:', nbends
         CPWcell.add(cpw)
@@ -303,306 +305,3 @@ class RFShuntGate():
             label = cad.shapes.LineLabel(self.length, 100, (pos[0],pos[1]), line_width=5, layer=self.layer_bottom)
         labelcell.add(label)
         return labelcell
-                    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# TODO: Below here is outdated and has to be removed                    
-################################
-'''
-    def gen_cavity(self, x0, y0, feedlength, hole, shuntgate):
-        """
-        Generate baselayer with shunted gate (optional)
-        """
-
-        self.bias_cell = cad.core.Cell('RF_DC_BIAS')
-        
-        # Create feed to shunt
-        part1 = CPW([[x0,y0],[x0+feedlength,y0]], layer=self.layer_bottom, pin=self.centerwidth,gap=self.gapwidth)        
-        
-        # Create shunt
-        x1 = x0+feedlength
-        y1 = y0-self.centerwidth/2-self.gapwidth
-        shunt = self.gen_shunt_full((x1,y1))
-
-        # Connect shunt to end
-        x2 = x1+self.shunt[0]+2*self.gapwidth
-        y2 = y0
-
-        mlength = 800
-        mwidth = 300
-        endlength = 1400
-        endx = x2+3*self.feedlength+3*mwidth+endlength
-
-        part2 = CPW([[x2,y2],[x2+3*self.feedlength,y2],[x2+3*self.feedlength,y2-mlength],[x2+3*self.feedlength+mwidth,y2-mlength],
-            [x2+3*self.feedlength+mwidth,y2],[x2+3*self.feedlength+2*mwidth,y2],[x2+3*self.feedlength+2*mwidth,y2-mlength],
-            [x2+3*self.feedlength+3*mwidth,y2-mlength],[x2+3*self.feedlength+3*mwidth,y2],[endx,y2]],
-            layer=self.layer_bottom,pin=self.centerwidth,gap=self.gapwidth,turn_radius = mwidth/2.)
-        
-        # Create hole at the end
-        holex0 = endx
-        holey0 = y2
-        holemarker = self.holemarker
-        if self.gapwidth!=0:
-            # Add hole for gJJ
-            gJJ_box = cad.core.Cell('JJ BOX')
-            gJJ_box.add(cad.shapes.Rectangle((holex0, holey0-hole[1]/2),(holex0+hole[0],holey0+hole[1]/2)))
-            # Add marker for gJJ
-            if holemarker == True:
-                box1=cad.shapes.Rectangle((holex0+5,holey0+40),(holex0+10,holey0+45))
-                box2=cad.shapes.Rectangle((holex0+10,holey0+35),(holex0+15,holey0+40))
-                gJJ_box.add(box1)
-                gJJ_box.add(box2)
-                gJJ_box.add(cad.utils.reflect(box1,'x',origin=(holex0+hole[0]/2,holey0)))
-                gJJ_box.add(cad.utils.reflect(box2,'x',origin=(holex0+hole[0]/2,holey0)))
-                gJJ_box.add(cad.utils.reflect(box1,'y',origin=(holex0+hole[0]/2,holey0)))
-                gJJ_box.add(cad.utils.reflect(box2,'y',origin=(holex0+hole[0]/2,holey0)))
-                gJJ_box.add(cad.utils.rotate(box1,180,center=(holex0+hole[0]/2,holey0)))
-                gJJ_box.add(cad.utils.rotate(box2,180,center=(holex0+hole[0]/2,holey0)))
-        endhole = holex0+hole[0]
-
-
-        for toadd in [part1,shunt,part2,gJJ_box]:
-            self.bias_cell.add(toadd)
-
-        return self.bias_cell
-
-
-    def gen_cavities(self,gapwidth=0):
-        """
-        Create the individual cavity. Gapwidth = 0: center conductor. Finite gapwidth: Gaps around
-        """
-
-        length = self.length
-        centerwidth = self.centerwidth + 2*gapwidth
-
-        center = self.center
-
-        # Create first launcher
-        launcherwidth = self.launcherwidth
-        llstart = self.llstart          
-        llend = self.llend
-        if gapwidth!=0:
-            x1_launcher = 0#-500
-            y1_launcher = 230
-        else:
-            x1_launcher = 700
-            y1_launcher = 0  
-
-        launcherpoints = [(x1_launcher, center+(launcherwidth+centerwidth)/2+y1_launcher),
-                        (1900, center+(launcherwidth+centerwidth)/2+y1_launcher),
-                        (llstart, center+centerwidth/2),
-                        (llstart, center-centerwidth/2),
-                        (1900, center-(launcherwidth+centerwidth)/2-y1_launcher),
-                        (x1_launcher, center-(launcherwidth+centerwidth)/2-y1_launcher)]
-        launcher = cad.core.Boundary(launcherpoints)
-
-        # Create first shunt
-        shunt1 = self.gen_shunt((llstart,self.llength),0,gap=gapwidth)
-
-        # Cavity length starts here
-        startx0 = shunt1[5]
-        stopx0 = startx0 + self.dict_cavity['lead1']-gapwidth
-        
-        shunt1_cavity_points = [(startx0,center),(stopx0,center)]
-        start_cavity = cad.core.Path(shunt1_cavity_points,centerwidth)
-
-        r0 = self.r0
-        radius = r0+centerwidth/2
-        inner_radius = r0-centerwidth/2
-        top_cv = self.top_cv
-        bot_cv = self.bot_cv
-        
-        # Calculate cavity length
-        A = (stopx0-startx0) + 2*np.pi*r0 * 2 + (top_cv-bot_cv) * 4
-        endx0 = stopx0+r0*8
-        endx = length - (A - endx0) - gapwidth
-        # without any curves: cav_straight = endx - startx0
-        
-        # Do the wiggles
-        curve1 = cad.shapes.Disk((stopx0,top_cv),radius,inner_radius=inner_radius,initial_angle=90,
-            final_angle=0)
-        curve1_lead = cad.core.Path([(stopx0+r0, top_cv),(stopx0+r0,bot_cv)],centerwidth)
-        curve2 = cad.shapes.Disk((stopx0+r0*2,bot_cv),radius,inner_radius=inner_radius,initial_angle=180,
-            final_angle=360)
-        curve2_lead = cad.core.Path([(stopx0+r0*3,bot_cv),(stopx0+r0*3,top_cv)],centerwidth)
-        curve3 = cad.shapes.Disk((stopx0+r0*4,top_cv),radius,inner_radius=inner_radius,initial_angle=180,
-            final_angle=0)
-        curve3_lead = cad.core.Path([(stopx0+r0*5,top_cv),(stopx0+r0*5,bot_cv)],centerwidth)
-        curve4 = cad.shapes.Disk((stopx0+r0*6,bot_cv),radius,inner_radius=inner_radius,initial_angle=180,
-            final_angle=360)
-        curve4_lead = cad.core.Path([(stopx0+r0*7,bot_cv),(stopx0+r0*7,top_cv)],centerwidth)
-        curve5 = cad.shapes.Disk((endx0,top_cv),radius,inner_radius=inner_radius,initial_angle=180,
-            final_angle=90)
-        final_lead = cad.core.Path([(endx0,center),(endx,center)],centerwidth)
-
-        # Create hole at the end
-        holex0 = endx
-        holedim = self.holedim
-        holemarker = self.holemarker
-        if gapwidth!=0:
-            # Add hole for gJJ
-            gJJ_box = cad.shapes.Rectangle((holex0, center-holedim[1]/2),(holex0+holedim[0],center+holedim[1]/2))
-            # Add marker for gJJ
-            if holemarker == True:
-                gJJ_marker = cad.core.Cell('gJJ_marker')
-                box1=cad.shapes.Rectangle((holex0+5,center+40),(holex0+10,center+45))
-                box2=cad.shapes.Rectangle((holex0+10,center+35),(holex0+15,center+40))
-                gJJ_marker.add(box1)
-                gJJ_marker.add(box2)
-                gJJ_marker.add(cad.utils.reflect(box1,'x',origin=(holex0+holedim[0]/2,center)))
-                gJJ_marker.add(cad.utils.reflect(box2,'x',origin=(holex0+holedim[0]/2,center)))
-                gJJ_marker.add(cad.utils.reflect(box1,'y',origin=(holex0+holedim[0]/2,center)))
-                gJJ_marker.add(cad.utils.reflect(box2,'y',origin=(holex0+holedim[0]/2,center)))
-                gJJ_marker.add(cad.utils.rotate(box1,180,center=(holex0+holedim[0]/2,center)))
-                gJJ_marker.add(cad.utils.rotate(box2,180,center=(holex0+holedim[0]/2,center)))
-        endhole = holex0+holedim[0]
-
-        # Create second shunt (optional)
-        if shuntgate:
-            leadout = 125
-            shunt2 = self.gen_shunt((endhole,70),leadout,gap=gapwidth)
-            self.endshunt = shunt2[5]
-        else:
-            self.endshunt = endhole
-        
-        # Create second launcher
-        launcher2 = cad.utils.reflect(launcher,'y',origin=(5e3,5e3))
-        holex0 = endx
-        holedim = self.holedim
-        launcher2 = cad.utils.translate(launcher2,(self.endshunt-(10e3-llstart),0))   
-        # For future: fix second shunt. For length adjustments make meandering longer or shorter,
-        # and center it. For now this is sufficient.
-        
-        # Create cavity
-        cavity1 = [cad.core.Elements()] * 3
-        # Add all elements with layer 1
-        for toadd in [launcher, shunt1[0], shunt1[1], shunt1[4],
-                    start_cavity, curve1,
-                    curve1_lead, curve2, curve2_lead, curve3, curve3_lead,
-                    curve4, curve4_lead, curve5, final_lead,
-                    launcher2]:
-            toadd.layer = self.layer_bottom
-            cavity1[0].add(toadd)
-
-        # Complete shunt
-        if gapwidth == 0:    
-            # Add all elements with layer 2
-            for toadd in [shunt1[2]]:
-                toadd.layer = self.layer_diel
-                cavity1[1].add(toadd)
-
-            # Add all elements with layer 3
-            for toadd in [shunt1[3]]:
-                toadd.layer = self.layer_top
-                cavity1[2].add(toadd)
-
-        # Add second shunt (optional)
-        if shunts==2:
-            for toadd in [shunt2[0], shunt2[1], shunt2[4]]:
-                toadd.layer = self.layer_bottom
-                cavity1[0].add(toadd)
-            if gapwidth == 0:
-                for toadd in [shunt2[2]]:
-                    toadd.layer = self.layer_diel
-                    cavity1[0].add(toadd)
-                for toadd in [shunt2[3]]:
-                    toadd.layer = self.layer_top
-                    cavity1[0].add(toadd)
-
-        # Add hole and marker for graphene
-        if gapwidth != 0:
-            cavity1[0].add(gJJ_box)
-            if holemarker == True:
-                for toadd in gJJ_marker:
-                    gJJ_marker.layer = self.layer_bottom
-                    cavity1[0].add(toadd)
-                # gJJ marker are missing from cavity2 ??
-        
-        
-        # Create second cavity as mirrored version of first one
-        cavity2 = [cad.utils.reflect(cavity1[i],'x',origin=(5e3,5e3)) for i in range(len(cavity1))]
-        
-        return (cavity1, cavity2)
-        
-
-    def gen_shunt(self,leadin,leadout,gap=0):
-        """
-        Create shunt capacitors
-        leadin: tuple (x-coordinate, lendth)
-        leadout: int length
-        gap: gapwidth between center conductor and ground
-        """
-        # Connect in to shunt
-        startx_in = leadin[0]   # x-coordinate
-        stopx_in = startx_in+leadin[1]-gap
-        leadpoints_in = [(startx_in, self.center),(stopx_in,self.center)]
-        lead_in = cad.core.Path(leadpoints_in,self.centerwidth+2*gap)
-
-        # Create shunt
-        shuntheight = self.shuntheight + 2*gap
-        shuntlength = self.shuntlength + 2*gap
-        shunt_x1 = stopx_in
-        shunt_y1 = self.center - shuntheight/2
-        shunt_x2 = shunt_x1 + shuntlength
-        shunt_y2 = shunt_y1 + shuntheight
-        shunt_points = [(shunt_x1, shunt_y1),(shunt_x2, shunt_y2)]
-
-        top_dx = self.top_dx
-        top_dy = self.top_dy
-        shunt_top_points = [(shunt_x1-top_dx, shunt_y1-top_dy),
-                            (shunt_x2+top_dx, shunt_y2+top_dy)]
-
-        diel_dxy = self.diel_dxy
-        shunt_diel_points = [(shunt_x1-top_dx-diel_dxy, shunt_y1-top_dy-diel_dxy),
-                            (shunt_x2+top_dx+diel_dxy, shunt_y2+top_dy+diel_dxy)]
-        
-        shunt = cad.shapes.Rectangle(shunt_points[0],shunt_points[1])
-        shunt_diel = cad.shapes.Rectangle(shunt_diel_points[0],shunt_diel_points[1])
-        shunt_top = cad.shapes.Rectangle(shunt_top_points[0],shunt_top_points[1])
-
-        # Connect shunt to out
-        startx_out = shunt_x2
-        stopx_out = startx_out + leadout
-        leadpoints_out = [(startx_out, self.center),(stopx_out,self.center)]
-        lead_out = cad.core.Path(leadpoints_out,self.centerwidth+2*gap)
-
-        return (lead_in, shunt, shunt_diel, shunt_top, lead_out, stopx_out)
-
-
-    def add_arcCPW(self,coords0,pin=12.5,gap=5,radius=150,layer=1,turn='ru'): # TODO
-        """
-        makes a turn in the CPW. turn = 'dr' corresponds to Down->Right, i.e. L
-        """
-        x0, y0 = coords0[0],coords0[1]
-        if turn = 'ru':
-            arc = CPW([[x0,y0],[x0+radius,y0],[x0+radius,y0+radius]],pin=pin,gap=gap,turn_radius=radius)
-        elif turn = 'rd':
-            arc = CPW([[x0,y0],[x0+radius,y0],[x0+radius,y0-radius]],pin=pin,gap=gap,turn_radius=radius)
-        elif turn = 'ur':
-            arc = CPW([[x0,y0],[x0,y0+radius],[x0+radius,y0+radius]],pin=pin,gap=gap,turn_radius=radius)
-        elif turn = 'ul':
-            arc = CPW([[x0,y0],[x0,y0+radius],[x0-radius,y0+radius]],pin=pin,gap=gap,turn_radius=radius)
-        elif turn = 'dr':
-            arc = CPW([[x0,y0],[x0,y0-radius],[x0+radius,y0-radius]],pin=pin,gap=gap,turn_radius=radius)
-        elif turn = 'dl':
-            arc = CPW([[x0,y0],[x0,y0-radius],[x0-radius,y0-radius]],pin=pin,gap=gap,turn_radius=radius)
-        elif turn = 'lu':
-            arc = CPW([[x0,y0],[x0-radius,y0],[x0-radius,y0+radius]],pin=pin,gap=gap,turn_radius=radius)
-        elif turn = 'ld':
-            arc = CPW([[x0,y0],[x0-radius,y0],[x0-radius,y0-radius]],pin=pin,gap=gap,turn_radius=radius)
-        return arc
-'''
-
