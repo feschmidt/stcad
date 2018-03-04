@@ -1,7 +1,6 @@
 import numpy as np
 from stcad.source_dev.chip import Base_Chip
 from stcad.source_dev.utilities import double_line_polygon,double_arc_polygon,line_polygon
-from stcad.source_dev.meandering_line import MeanderingLine
 import gdsCAD as cad
 import copy
 import numpy as np
@@ -129,7 +128,7 @@ class CPW(cad.core.Cell):
             p_0 = self.points[-2]
             p_1 = self.points[-1]
         else:
-            raise ValueError("First argumnet should be either 'beginning' or 'b' or 'end' or 'e'")
+            raise ValueError("First argument should be either 'beginning' or 'b' or 'end' or 'e'")
         cad.core.default_layer=self.layer
         # normalize vector
         vec = p_1-p_0
@@ -148,4 +147,4 @@ if __name__ == '__main__':
   cp.add_launcher('beginning')
   cp.add_open('end')
   chip.add_component(cp, (0,0))
-  chip.save_to_gds(show=True, save=True,loc='')
+  chip.save_to_gds(show=True, save=False,loc='')

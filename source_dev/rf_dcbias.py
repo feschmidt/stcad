@@ -20,14 +20,14 @@ class RFShunt():
         self.termination = termination
         if termination=='squid':
             self.squid = self.dict_dcbias['squid']     # (loopx,loopy,jwidth,loopwidth)
-
+        else:
+            self.squid = False
         self.centerwidth = self.dict_dcbias['centerwidth']
         self.gapwidth = self.dict_dcbias['gapwidth']
 
         self.layer_bottom = 1
         self.layer_top = 2
         self.layer_ins = 3
-        
 
         # hard coded values
         self.radius = 1000

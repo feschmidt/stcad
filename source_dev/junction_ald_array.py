@@ -24,6 +24,7 @@ class Junctionchip():
         '''
         Consists of a centerline that spreads out to 6 individual junctions
         First creates bottom row of JJs, finally uses dc_24pin to generate the full 4x4 array
+        doublepads puts bondpads also on bottom layer everywhere
         '''
         
         padwidth = self.dict_pads['width']

@@ -20,10 +20,11 @@ class SQUIDchip():
         self.layer_bottom = 1
         self.layer_top = 2
 
-    def gen_junctions(self, dim = (50,50), doublepads=False):
+    def gen_junctions(self, dim = (50,50), doublepads=False, tbar_bot=True, jjleadwidth = 0):
         '''
         Consists of a centerline that spreads out to 6 individual SQUIDs
         First creates bottom row of JJs, finally uses dc_24pin to generate the full 4x4 array
+        doublepads puts bondpads also on bottom layer everywhere
         '''
         
         padwidth = self.dict_pads['width']
@@ -34,6 +35,10 @@ class SQUIDchip():
 
         location = self.dict_junctions['location']
         jjwidth = self.dict_junctions['width']
+        if jjleadwidth!=0:
+            jjleadwidth = jjleadwidth
+        else:
+            jjleadwidth = jjwidth
         jjmin = self.dict_junctions['jjmin']
         jjmax = self.dict_junctions['jjmax']
         jjstep = self.dict_junctions['jjstep']
@@ -41,15 +46,22 @@ class SQUIDchip():
         amount = len(jjlength)
 
         if self.tlength==None:
-            self.tlength = (padwidth+padspace)*(amount)/2-padwidth/2
+            self.tlength = (padwidth+padspace)*(amount)/2.-padwidth/2.
     
-        cwidth = 20
-        drain = 100
-        source = 50
-        centerpoints = [(0, tripeak - cwidth / 2),
-                        (0, tripeak + source + dim[1] + drain + cwidth / 2),
-                        (self.tlength-5, tripeak + source + dim[1] + drain + cwidth / 2),
-                        (- self.tlength, tripeak + source + dim[1] + drain + cwidth / 2)]
+        cwidth = 20.
+        drain = 100.
+        source = 50.
+        # Place drain strip (ground)
+        if tbar_bot: #if using tbar geometry
+            centerpoints = [(0, tripeak - cwidth / 2),
+                            (0, tripeak + source + dim[1] + drain + cwidth / 2),
+                            (self.tlength-5, tripeak + source + dim[1] + drain + cwidth / 2),
+                            (- self.tlength, tripeak + source + dim[1] + drain + cwidth / 2)]
+        else: # if just using a straight wire
+            centerpoints = [(0, tripeak - cwidth / 2),
+                        (0, tripeak + source + cwidth / 2),
+                        (self.tlength, tripeak + source + cwidth / 2),
+                        (- self.tlength, tripeak + source + cwidth / 2)]
         centerline = cad.core.Path(centerpoints, cwidth, layer = self.layer_bottom)
 
         self.padgroup = [cad.core.Cell('padgroup')] * 2
@@ -59,20 +71,21 @@ class SQUIDchip():
             if i>=0:
                 k=k-1
             xs = (padwidth + padspace) * i
-            squid_left = cad.core.Path([[xs,tripeak-jjwidth/2],
-                                    [xs,tripeak+source],
-                                    [xs-dim[0]/2,tripeak+source],
-                                    [xs-dim[0]/2,tripeak+source+dim[1]+(k+1)*jjstep]],
-                                    jjwidth,layer=self.layer_top)
-            squid_right = cad.core.Path([[xs,tripeak-jjwidth/2],
-                                    [xs,tripeak+source],
-                                    [xs+dim[0]/2,tripeak+source],
-                                    [xs+dim[0]/2,tripeak+source+dim[1]+(k+1)*jjstep]],
+            # The actual squid
+            if tbar_bot:
+                extra = cwidth/2+40 # to match Artiom's old base layer
+            else:
+                extra = 0
+            squid_lead = cad.core.Path([[xs,tripeak-10*jjwidth], [xs,tripeak+source-dim[1]+extra]],jjleadwidth,layer=self.layer_top)
+            squid_fork = cad.core.Path([[xs-dim[0]/2,tripeak+source+(k+.5)*jjstep+extra],
+                                    [xs-dim[0]/2,tripeak+source-dim[1]+extra],
+                                    [xs+dim[0]/2,tripeak+source-dim[1]+extra],
+                                    [xs+dim[0]/2,tripeak+source+(k+.5)*jjstep+extra]],
                                     jjwidth, layer=self.layer_top)
             junction_label = cad.shapes.LineLabel(k,200,(xs-padwidth/2,-2e3), layer=self.layer_top)
             array_label = cad.shapes.LineLabel('S'+str(jjwidth),200,(-100,-2e3), layer=self.layer_bottom)
             
-            pad_bot = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + padwidth + xs,self.y0 + padlength), layer=self.layer_bottom)
+            pad_bot = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + padwidth + xs,self.y0 + padlength), layer = self.layer_bottom)
             pad_top = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + padwidth + xs,self.y0 + padlength), layer = self.layer_top)
             tripoints = [[self.x0 + xs,self.y0 + padlength],
                         [self.x0 + padwidth / 2. + xs,tripeak],
@@ -85,25 +98,27 @@ class SQUIDchip():
                     self.padgroup[ll-1].add(pad_bot)
             else:
                 ll = self.layer_top
+                # Horizontal and vertical tbar ground leads
                 squid_hor = cad.core.Path([[xs-0.6*dim[0],tripeak+source+dim[1]+cwidth/2],
-                                    [xs+0.6*dim[0],tripeak+source+dim[1]+cwidth/2]],
+                                           [xs+0.6*dim[0],tripeak+source+dim[1]+cwidth/2]],
                                     cwidth,layer=self.layer_bottom)
                 squid_ver = cad.core.Path([[xs,tripeak+source+dim[1]+cwidth/2],
-                                    [xs,tripeak+source+dim[1]+cwidth/2+drain]],
+                                           [xs,tripeak+source+dim[1]+cwidth/2+drain]],
                                     cwidth,layer=self.layer_bottom)
                 if doublepads==False:
                     self.padgroup[ll-1].add(pad_top)
-            for toadd in [tri, squid_ver, squid_hor]:
-                if toadd==tri:
-                    toadd.layer = ll
-                self.padgroup[ll-1].add(toadd)
+            if tbar_bot:
+                for toadd in [squid_ver, squid_hor]:
+                    self.padgroup[ll-1].add(toadd)
+            tri.layer=ll
+            self.padgroup[ll-1].add(tri)
             if doublepads==True:
                 self.padgroup[ll-1].add(pad_bot)
                 self.padgroup[ll-1].add(pad_top)
 
             if i!=0:
-                self.padgroup[ll-1].add(squid_left)
-                self.padgroup[ll-1].add(squid_right)
+                self.padgroup[ll-1].add(squid_lead)
+                self.padgroup[ll-1].add(squid_fork)
                 self.padgroup[ll-1].add(junction_label)
         self.padgroup[0].add(array_label)
     

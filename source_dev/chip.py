@@ -112,13 +112,13 @@ class Base_Chip(cad.core.Cell):
                 raise ValueError(" component lies out of layout") 
             self.add(cell_obj,origin=pos)
 
-    def add_text(self, txt='Hello', pos=(0,0), txtlayer=20):
+    def add_text(self, txt='Hello', pos=(0,0), fontsize=50,linewidth=2,txtlayer=20):
         """
         adds a string at the defined position
         """
-        thetext = cad.shapes.LineLabel(txt ,self.boxwidth,
+        thetext = cad.shapes.LineLabel(txt ,fontsize,
                                          position=pos,
-                                         line_width=5,
+                                         line_width=linewidth,
                                          layer=txtlayer)
         self.add(thetext)
 
