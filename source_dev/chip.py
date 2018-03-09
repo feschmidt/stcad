@@ -176,7 +176,7 @@ class Base_Chip(cad.core.Cell):
         """
         marker = cad.core.Cell('PHOTO')
         amarks0 = cad.templates.AlignmentMarks(('A','C'),layer)
-        amarks = cad.core.CellReference(amarks0).translate(pos)
+        amarks = cad.core.CellReference(amarks0,origin = pos)
         marker.add(amarks)
         self.add(amarks)
     
