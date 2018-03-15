@@ -2,7 +2,6 @@ import gdsCAD as cad
 import shapely
 import numpy as np
 import collections
-#import gdspy
 
 def length_path(points):
 	length=0
