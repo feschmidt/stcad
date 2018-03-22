@@ -1,5 +1,8 @@
 import numpy as np
 
+# Code copied from Lucas H. Gabrielli's heitzmann/gdspy module
+# https://github.com/heitzmann/gdspy
+
 def fillet(points,
                radius,
                points_per_2pi=128,

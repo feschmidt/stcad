@@ -16,7 +16,7 @@ class Base_Chip(cad.core.Cell):
     Options for label location: By default slightly to the right of x=0 and 700um below upper edge. Can be adjusted by labelloc=(xpos,ypos)
     Options for label linewidth: labelwidth=5 by default
     """
-    def __init__(self, name, xdim=1000, ydim=1000, frame=True, label=True, wafer=False, labelloc=(0,0), labelwidth=5):
+    def __init__(self, name, xdim=1000, ydim=1000, frame=True, label=True, wafer=False, labelloc=(0,0), labelwidth=5, boxwidth=None):
         
         super(Base_Chip, self).__init__(name)
         self.name = name
@@ -25,10 +25,13 @@ class Base_Chip(cad.core.Cell):
         self.wafer = wafer
         wafer_d = [0, 25.4e3, 50.8e3, 76.2e3, 100e3, 125e3, 150e3]  # wafer diameters in um
         
-        if xdim < 1001 and ydim < 1001:
-            self.boxwidth = 10
+        if not boxwidth:
+            if xdim < 1001 and ydim < 1001:
+                self.boxwidth = 10
+            else:
+                self.boxwidth = 100
         else:
-            self.boxwidth = 100
+            self.boxwidth = boxwidth
         
             
         self.layer_label = 20
