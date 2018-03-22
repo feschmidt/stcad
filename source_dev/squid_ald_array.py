@@ -4,7 +4,7 @@ import dc_24pin
 
 class SQUIDchip():
 
-    def __init__(self, name, dict_pads, dict_junctions, x0 = -100, y0 = -1700, 
+    def __init__(self, name, dict_pads, dict_junctions, x0 = -100, y0 = -1500, 
         tlength = None):
         '''
         Class for ALD SQUIDs. These are based on vertical tunnel barriers with a two-step process.
@@ -37,7 +37,7 @@ class SQUIDchip():
             jjleadwidth = jjleadwidth
         else:
             jjleadwidth = self.jjwidth
-        jjlength = np.arange(self.jjmin,self.jjmax+1,self.jjstep)
+        jjlength = np.arange(self.jjmin,self.jjmax+self.jjstep,self.jjstep)
         amount = len(jjlength)
 
         if self.tlength==None:
@@ -45,7 +45,7 @@ class SQUIDchip():
     
         cwidth = 20.
         drain = 100.
-        source = 50.
+        source = 15.
         # Place drain strip (ground)
         if tbar_bot: #if using tbar geometry
             centerpoints = [(0, tripeak - cwidth / 2),
@@ -64,11 +64,11 @@ class SQUIDchip():
 
         for k,i in zip(jjlength,range(-amount/2+1,amount/2+2)):
             if i>=0:
-                k=k-1
+                k=k-self.jjstep
             xs = (self.padwidth + self.padspacing) * i
             # The actual squid
             if tbar_bot:
-                extra = cwidth/2+40 # to match Artiom's old base layer
+                extra = cwidth/2
             else:
                 extra = 0
             squid_lead = cad.core.Path([[xs,tripeak-10*self.jjwidth], [xs,tripeak+source-dim[1]+extra]],jjleadwidth,layer=self.layer_top)
@@ -77,8 +77,8 @@ class SQUIDchip():
                                     [xs+dim[0]/2,tripeak+source-dim[1]+extra],
                                     [xs+dim[0]/2,tripeak+source+(k+.5)*self.jjstep+extra]],
                                     self.jjwidth, layer=self.layer_top)
-            junction_label = cad.shapes.LineLabel(k,200,(xs-self.padwidth/2,-2e3), layer=self.layer_top)
-            array_label = cad.shapes.LineLabel('S'+str(self.jjwidth),200,(-100,-2e3), layer=self.layer_bottom)
+            junction_label = cad.shapes.LineLabel(k,150,(xs-self.padwidth/2,self.y0-self.padlength), layer=self.layer_top)
+            array_label = cad.shapes.LineLabel(self.jjwidth,150,(-100,self.y0-self.padlength), layer=self.layer_bottom)
             
             pad_bot = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + self.padwidth + xs,self.y0 + self.padlength), layer = self.layer_bottom)
             pad_top = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + self.padwidth + xs,self.y0 + self.padlength), layer = self.layer_top)
