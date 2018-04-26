@@ -1,6 +1,6 @@
 import numpy as np
 import gdsCAD as cad
-import dc_24pin
+from . import dc_24pin
 
 class Junctionchip():
 
@@ -55,7 +55,7 @@ class Junctionchip():
         self.padgroup = [cad.core.Cell('padgroup')] * 2
         self.padgroup[0].add(centerline)
 
-        for k,i in zip(jjlength,range(-amount/2+1,amount/2+2)):
+        for k,i in zip(jjlength,list(range(-amount/2+1,amount/2+2))):
             if i>=0:
                 k=k-1
             xs = (padwidth + padspace) * i

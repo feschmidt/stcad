@@ -1,7 +1,7 @@
 import numpy as np
 import gdsCAD as cad
-from CPW import *
-from testing_fillet import fillet
+from .CPW import *
+from .testing_fillet import fillet
 
 class RFShuntGate():
     '''
@@ -33,7 +33,7 @@ class RFShuntGate():
         self.maskmargin = 5
         self.shuntmasksize = (260,740)
 
-        for key,val in dict_dcbias.items():
+        for key,val in list(dict_dcbias.items()):
             setattr(self,key,val)
         
         self.holemarker = holemarker
@@ -205,10 +205,10 @@ class RFShuntGate():
             self.cpwlist = cpwlist
             cpw = CPW(self.cpwlist,pin=pin,gap=gap,turn_radius=turnradius,layer=layer)
 
-        print 'Input length:', length
-        print 'Available xspace:', xspace
-        print 'Resonator length:', cpw.length
-        print 'Number of bends:', nbends
+        print('Input length:', length)
+        print('Available xspace:', xspace)
+        print('Resonator length:', cpw.length)
+        print('Number of bends:', nbends)
 
         CPWcell.add(cpw)
 

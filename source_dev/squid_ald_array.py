@@ -1,6 +1,6 @@
 import numpy as np
 import gdsCAD as cad
-import dc_24pin
+from . import dc_24pin
 
 class SQUIDchip():
 
@@ -13,9 +13,9 @@ class SQUIDchip():
         '''
  
         self.name = name
-        for key,val in dict_pads.items():
+        for key,val in list(dict_pads.items()):
             setattr(self,key,val)
-        for key,val in dict_junctions.items():
+        for key,val in list(dict_junctions.items()):
             setattr(self,key,val)
         self.x0 = x0
         self.y0 = y0
@@ -62,7 +62,7 @@ class SQUIDchip():
         self.padgroup = [cad.core.Cell('padgroup')] * 2
         self.padgroup[0].add(centerline)
 
-        for k,i in zip(jjlength,range(-amount/2+1,amount/2+2)):
+        for k,i in zip(jjlength,list(range(-amount/2+1,amount/2+2))):
             if i>=0:
                 k=k-self.jjstep
             xs = (self.padwidth + self.padspacing) * i

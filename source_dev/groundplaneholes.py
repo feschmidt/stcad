@@ -1,7 +1,7 @@
 import numpy as np
 import gdsCAD as cad
-from CPW import *
-from testing_fillet import fillet
+from .CPW import *
+from .testing_fillet import fillet
 
 class GroundPlaneHoles():
     '''
@@ -20,7 +20,7 @@ class GroundPlaneHoles():
 
         self.layer = 99
         
-        for key,val in dict_holes.items():
+        for key,val in list(dict_holes.items()):
             setattr(self,key,val)
 
     
@@ -39,7 +39,7 @@ class GroundPlaneHoles():
                 hole = cad.shapes.Rectangle((x,y),(x+self.holes[0],y+self.holes[1]),layer=self.layer)
                 self.smallcell.add(hole)
                 k += 1.
-                print (x,y), '{:.4} %'.format(k/len(xlist)/len(ylist)*100.)
+                print((x,y), '{:.4} %'.format(k/len(xlist)/len(ylist)*100.))
 
         smallxlist = np.arange(-self.xdim/2.,self.xdim/2.,self.smallx+2*self.streets[0])
         smallylist = np.arange(-self.ydim/2.,self.ydim/2.,self.smally+2*self.streets[0])
@@ -47,6 +47,6 @@ class GroundPlaneHoles():
         for i,x in enumerate(smallxlist):
             for j,y in enumerate(smallylist):
                 self.cell.add(cad.core.CellReference(self.smallcell,origin=(x+self.smallx/2.,y+self.smally/2.)))
-                print (x,y), '{:.4} %'.format(k/len(xlist)/len(ylist)*100.)
+                print((x,y), '{:.4} %'.format(k/len(xlist)/len(ylist)*100.))
         return self.cell
 

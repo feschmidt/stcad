@@ -1,6 +1,6 @@
 import numpy as np
 import gdsCAD as cad
-import utilities as utils
+from . import utilities as utils
 
 class RFHangers():
     """
@@ -108,7 +108,7 @@ class RFHangers():
         gapwidth = self.gapwidth
         radius = self.radius
 
-        print 'Generating hanger of length ' + str(length) + ' with '+coupling+' coupling'
+        print('Generating hanger of length ' + str(length) + ' with '+coupling+' coupling')
 
         self.hanger_cell = cad.core.Cell('RF_HANGER')
         
@@ -142,7 +142,7 @@ class RFHangers():
                                 (x0+couplinglength+radius-gapwidth,y0-radius-restlength-gapwidth),
                                 (x0+couplinglength+radius-gapwidth,y0-radius)]
             else:
-                print 'Adding SQUID'
+                print('Adding SQUID')
 		squiddrain=self.squiddrain
 		squidx = self.squidx
 		squidy = self.squidy

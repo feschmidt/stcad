@@ -61,7 +61,7 @@ def make_rounded_edges(rectangle, radius, dict_corners):
 	
 	rectangle_shapely = poly_to_shapely(rectangle)
 	rounded_rect = rectangle_shapely
-	for key, value in dict_corners.iteritems():
+	for key, value in dict_corners.items():
 		if key[:2] == 'BL':
 			rot = 0
 		elif key[:2] == 'BR':

@@ -1,6 +1,6 @@
 import numpy as np
 import gdsCAD as cad
-import utilities as utils
+from . import utilities as utils
 
 class RFShunt():
     """
@@ -174,7 +174,7 @@ class RFShunt():
 
         # Add Box (optional) or SQUID (optional) at the end
         if self.termination == "short":
-            print "Termination: Short to ground"
+            print("Termination: Short to ground")
         elif self.termination == "open":
             x7 = x6-part4l
             y7 = y6+self.gapwidth+self.centerwidth/2
@@ -187,13 +187,13 @@ class RFShunt():
                     (x7,y7+boxy)]
             endbox = cad.core.Boundary(endboxpoints, layer= self.layer_bottom)
             self.bias_cell.add(endbox)
-            print "Termination: Open to ground"
+            print("Termination: Open to ground")
         elif self.termination == "squid":
             squid1 = self.gen_squid_base((x6-part4l,y6+self.gapwidth),(100,40))
             squid2 = self.gen_squid_top((x6-part4l,y6+self.gapwidth+self.centerwidth/2.),(100,40))
             self.bias_cell.add(squid1)
             self.bias_cell.add(squid2)
-            print "Termination: SQUID "+str(self.squid[2])+" "+str(self.squid[0])+'x'+str(self.squid[1])+" to ground"
+            print("Termination: SQUID "+str(self.squid[2])+" "+str(self.squid[0])+'x'+str(self.squid[1])+" to ground")
         else:
             raise ValueError("Wrong termination specified. Good values are short (default), open, squid.")
 

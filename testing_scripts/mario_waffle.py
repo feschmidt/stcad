@@ -36,6 +36,6 @@ waffle = WaffleCapacitor(base_width,
         top_layer =3, 
         top_hole_layer =6,
         ground = True)
-print waffle.capacitance(gap=50e-9)
+print(waffle.capacitance(gap=50e-9))
 chip.add(waffle)
 chip.save_to_gds(show=False, save=True,loc='')

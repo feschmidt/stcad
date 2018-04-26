@@ -1,6 +1,6 @@
 import numpy as np
 import gdsCAD as cad
-import utilities as utils
+from . import utilities as utils
 
 
 class Feedline():
@@ -22,7 +22,7 @@ class Feedline():
 
         self.feedline = feedline    # additional option to omit feedlines if set to False
 
-        for key,val in dict_feedline.items():
+        for key,val in list(dict_feedline.items()):
             setattr(self,key,val)
 
     def gen_feedline(self):
