@@ -1,6 +1,8 @@
 import numpy as np
 import gdsCAD as cad
-from . import utilities as utils
+# from .utilities import utilities as utils
+from .CPW import *
+from .testing_fillet import fillet
 
 class RFShunt():
     """
@@ -9,32 +11,32 @@ class RFShunt():
         - termination = "open". Other good values are "short" (to GND) or "squid"
     """
 
-    def __init__(self, name, dict_dcbias, termination = "open"):
+    def __init__(self, name, dict_dcbias,shunttype=0):
 
         self.name = name
-        self.dict_dcbias = dict_dcbias
-        self.length = self.dict_dcbias['length']
-        self.pos = self.dict_dcbias['position']    # (x0,y0)
-        self.feedlength = self.dict_dcbias['feedlength']
-        self.shunt = self.dict_dcbias['shunt']     # (basex,basey,insoverlap,topx,topy)
-        self.termination = termination
-        if termination=='squid':
+        self.parts = (3000,3000,2000)
+        self.turnradius = 1e3
+        self.termination='open'
+        self.boxdim = (100,40)
+        self.maskmargin = 5
+
+        for key,val in list(dict_dcbias.items()):
+            setattr(self,key,val)
+
+        if self.termination=='squid':
             self.squid = self.dict_dcbias['squid']     # (loopx,loopy,jwidth,loopwidth)
         else:
             self.squid = False
-        self.centerwidth = self.dict_dcbias['centerwidth']
-        self.gapwidth = self.dict_dcbias['gapwidth']
+
+        self.shunttype = shunttype
 
         self.layer_bottom = 1
         self.layer_top = 2
         self.layer_ins = 3
 
-        # hard coded values
-        self.radius = 1000
-
         self.cell = cad.core.Cell('RF CELL')
 
-    def gen_full(self):
+    def gen_full(self,mask=True):
         """
         Generate four DC bias cavities with option to have squids at the end
         """
@@ -48,18 +50,21 @@ class RFShunt():
         rfcell = cad.core.Cell('RESONATOR')
         resonator = self.gen_cavity(x0,y0,feedlength,self.squid)
         rfcell.add(resonator)
-
-        self.cell.add(rfcell)
+        if mask:
+            rfmask = self.gen_holey_ground_mask()
+            rfcell.add(rfmask)
 
         # Add the other three as copies of the first one
-        self.cell.add(cad.core.CellReference(rfcell,origin=(0,0),x_reflection=True))
-        self.cell.add(cad.core.CellReference(rfcell,origin=(0,0),rotation = 180))
-        self.cell.add(cad.core.CellReference(rfcell,origin=(0,0),rotation=180,x_reflection=True))
+        rfcell.add(cad.core.CellReference(rfcell,origin=(0,0),x_reflection=True))
+        rfcell.add(cad.core.CellReference(rfcell,origin=(0,0),rotation = 180))
+        rfcell.add(cad.core.CellReference(rfcell,origin=(0,0),rotation=180,x_reflection=True))
+
+        self.cell.add(rfcell)
 
         return self.cell
 
 
-    def gen_partial(self, loc):
+    def gen_partial(self, loc, mask=True):
         """
         Generate one DC bias cavity with specified loc(ation)
         values for loc: sw, se, ne, nw
@@ -74,6 +79,9 @@ class RFShunt():
         rfcell = cad.core.Cell('RESONATOR')
         resonator = self.gen_cavity(x0,y0,feedlength,self.squid)
         rfcell.add(resonator)
+        if mask:
+            rfmask = self.gen_holey_ground_mask()
+            rfcell.add(rfmask)
 
         if loc == 'sw':
             self.cell.add(rfcell)
@@ -97,56 +105,32 @@ class RFShunt():
         self.bias_cell = cad.core.Cell('RF_DC_BIAS')
         
         # Create feed to shunt
-        part1points = [(x0, y0),
-                    (x0+feedlength, y0),
-                    (x0+feedlength, y0+self.gapwidth),
-                    (x0, y0+self.gapwidth)]
-        part1 = cad.core.Boundary(part1points, layer=self.layer_bottom)
-        part11 = cad.utils.reflect(part1,'x',origin=(0,y0+self.gapwidth+self.centerwidth/2.))
-        
+        self.feedlist = [[x0,y0],[x0+feedlength,y0]]
+        feedpart = CPW(self.feedlist,pin=self.centerwidth,gap=self.gapwidth,layer=self.layer_bottom)
         
         # Create shunt
         x1 = x0+feedlength
         y1 = y0
         shunt = self.gen_shunt_full((x1,y1))
         
-        # Connect shunt to first turn
-        x2 = x1+self.shunt[0]+2*self.gapwidth
-        y2 = y0
-        part2l = 2e3
-        part2points = [(x2, y2),
-                    (x2+part2l, y2),
-                    (x2+part2l, y2+self.gapwidth),
-                    (x2, y2+self.gapwidth)]
-        part2 = cad.core.Boundary(part2points, layer=self.layer_bottom)
-        part21 = cad.utils.reflect(part2,'x',origin=(0,y2+self.gapwidth+self.centerwidth/2.))
+        CPWcell = cad.core.Cell('CPW')
         
-        # Create first turn
-        x3 = x2+part2l
-        y3 = y0
-        radius1 = self.radius                
-        curve1 = cad.shapes.Disk((x3,y3+self.gapwidth+self.centerwidth+radius1), radius=radius1, inner_radius=radius1-self.gapwidth, initial_angle=270,final_angle=360, layer=self.layer_bottom)
+        cpwlist = [(x1+self.shunt[0]+self.gapwidth,y0)]
+        cpwlist.append((cpwlist[-1][0]+self.parts[0],cpwlist[-1][1]))
+        cpwlist.append((cpwlist[-1][0],cpwlist[-1][1]+self.parts[1]))
+        cpwlist.append((cpwlist[-1][0]-self.parts[2],cpwlist[-1][1]))
         
-        radius11 = self.radius + self.gapwidth + self.centerwidth
-        curve11 = cad.shapes.Disk((x3,y3+radius11), radius=radius11, inner_radius=radius11-self.gapwidth, initial_angle=270,final_angle=360, layer=self.layer_bottom)
-        
-        # Connect first turn to second turn
-        x4 = x3+radius11
-        y4 = y3+radius11
-        part3l = 1e3
-        part3points = [(x4, y4),
-                    (x4, y4+part3l),
-                    (x4-self.gapwidth, y4+part3l),
-                    (x4-self.gapwidth, y4)]
-        part3= cad.core.Boundary(part3points, layer=self.layer_bottom)
-        part31 = cad.utils.reflect(part3,'y',origin=(x4-self.gapwidth-self.centerwidth/2.,0))
+        self.cpwlist = cpwlist
+        cpw = CPW(self.cpwlist,pin=self.centerwidth,gap=self.gapwidth,turn_radius=self.turnradius,layer=self.layer_bottom)
+        self.cpwlength = cpw.length
+        ### Not yet implemented:
+        # print('Input length:', self.length)
+        # print('Available xspace:', xspace)
+        # print('Resonator length:', cpw.length)
+        # print('Number of bends:', nbends)
 
-        # Create second turn by copying first turn
-        x5 = x3
-        y5 = y4 + part3l/2
-        curve2 = cad.utils.reflect(curve1,'x',origin=(0,y5))
-        curve21 = cad.utils.reflect(curve11,'x',origin=(0,y5))
-
+        CPWcell.add(cpw)
+        '''
         # Add final length
         x6 = x3
         y6 = y5 + radius11 + part3l/2 - 2*self.gapwidth - self.centerwidth
@@ -155,7 +139,6 @@ class RFShunt():
         part4l = self.length - part2l - np.pi*radius_cav - part3l
         if part4l<0:
             raise ValueError("Cavity length is too short! Partial cavity length already exceeds desired value.")
-
         part4points = [(x6, y6),
                     (x6-part4l, y6),
                     (x6-part4l, y6+self.gapwidth),
@@ -163,29 +146,21 @@ class RFShunt():
         part4 = cad.core.Boundary(part4points, layer=self.layer_bottom)
         part41 = cad.utils.reflect(part4,'x',origin=(0,y6+self.gapwidth+self.centerwidth/2.))
         
-
+        '''
         # Add all elements to cell
-        for toadd in [part1, part11,
-                    shunt,
-                    part2, part21, curve1, curve11,
-                    part3, part31, curve2, curve21,
-                    part4, part41]:
+        for toadd in [feedpart, shunt, CPWcell]:
             self.bias_cell.add(toadd)
 
         # Add Box (optional) or SQUID (optional) at the end
+        x7 = self.cpwlist[-1][0]
+        y7 = self.cpwlist[-1][1]
+        
         if self.termination == "short":
+            self.endboxpoints=[(x7,y7-self.boxdim[1]/2.),(x7,y7+self.boxdim[1]/2.)]
             print("Termination: Short to ground")
         elif self.termination == "open":
-            x7 = x6-part4l
-            y7 = y6+self.gapwidth+self.centerwidth/2
-            boxx = 100
-            boxy = 40
-            endboxpoints = [(x7, y7),
-                    (x7, y7-boxy),
-                    (x7-boxx, y7-boxy),
-                    (x7-boxx, y7+boxy),
-                    (x7,y7+boxy)]
-            endbox = cad.core.Boundary(endboxpoints, layer= self.layer_bottom)
+            self.endboxpoints=[(x7-self.boxdim[0],y7-self.boxdim[1]/2.),(x7,y7+self.boxdim[1]/2.)]
+            endbox = cad.shapes.Rectangle(self.endboxpoints[0],self.endboxpoints[1])
             self.bias_cell.add(endbox)
             print("Termination: Open to ground")
         elif self.termination == "squid":
@@ -210,10 +185,12 @@ class RFShunt():
 
         shuntcell = cad.core.Cell('SHUNT')
         shuntbase = self.gen_shunt_base((x0,y0))
-        shunttop = self.gen_shunt_top((x0+self.gapwidth+self.shunt[0]/2-self.shunt[3]/2,y0+self.gapwidth+self.centerwidth/2-self.shunt[4]/2))
-        shuntins = self.gen_shunt_ins((x0+self.gapwidth+self.shunt[0]/2-self.shunt[3]/2,y0+self.gapwidth+self.centerwidth/2-self.shunt[4]/2))
+        shunttop = self.gen_shunt_top((x0+self.gapwidth/2+self.shunt[0]/2-self.shunt[4]/2,y0-self.shunt[5]/2),shunttype=self.shunttype)
+        shuntins = self.gen_shunt_ins((x0+self.gapwidth/2-(self.shunt[2]-self.shunt[0])/2,y0-self.shunt[3]/2))
+
         [shuntcell.add(toadd) for toadd in [shuntbase, shuntins, shunttop]]
         return shuntcell
+
 
     def gen_shunt_base(self,pos):
         """
@@ -223,6 +200,7 @@ class RFShunt():
         y0 = pos[1]
 
         shuntbase = cad.core.Cell('shuntbase')
+        '''
         shuntpoints = [(x0, y0+self.gapwidth),
                      (x0, y0-self.shunt[1]/2.),
                      (x0+self.shunt[0]+2*self.gapwidth, y0-self.shunt[1]/2.),
@@ -232,7 +210,11 @@ class RFShunt():
                      (x0+self.gapwidth, y0+self.gapwidth-self.shunt[1]/2.),
                      (x0+self.gapwidth, y0+self.gapwidth)]
         shunt1 = cad.core.Boundary(shuntpoints, layer=self.layer_bottom)
-        shunt11 = cad.utils.reflect(shunt1,'x',origin=(0,y0+self.gapwidth+self.centerwidth/2.))
+        '''
+        shuntpoints = [(x0,y0+self.centerwidth/2.),(x0,y0+self.shunt[1]/2.+self.gapwidth/2.),
+                    (x0+self.shunt[0]+self.gapwidth,y0+self.shunt[1]/2.+self.gapwidth/2.),(x0+self.shunt[0]+self.gapwidth,y0+self.centerwidth/2.)]
+        shunt1 = cad.core.Path(shuntpoints,self.gapwidth)
+        shunt11 = cad.utils.reflect(shunt1,'x',origin=(0,y0))#+self.gapwidth+self.centerwidth/2.))
         shuntbase.add(shunt1)
         shuntbase.add(shunt11)
         return shuntbase
@@ -246,14 +228,14 @@ class RFShunt():
         y0 = pos[1]
 
         shuntins = cad.core.Cell('shuntins')
-        shuntpoints = [(x0-self.shunt[2],y0-self.shunt[2]),
-                    (x0+self.shunt[3]+self.shunt[2],y0+self.shunt[4]+self.shunt[2])]
+        shuntpoints = [(x0,y0),
+                    (x0+self.shunt[2],y0+self.shunt[3])]
         shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_ins)
         shuntins.add(shunt)
         return shuntins
 
 
-    def gen_shunt_top(self,pos):
+    def gen_shunt_top(self,pos,shunttype):
         """
         Returns top plate for shunt capacitors
         """
@@ -261,10 +243,27 @@ class RFShunt():
         y0 = pos[1]
 
         shunttop = cad.core.Cell('shunttop')
-        shuntpoints = [(x0,y0),
-                    (x0+self.shunt[3],y0+self.shunt[4])]
-        shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_top)
-        shunttop.add(shunt)
+        if shunttype==0:
+            shuntpoints = [(x0,y0),
+                        (x0+self.shunt[4],y0+self.shunt[5])]
+            shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_top)
+            
+            shunttop.add(shunt)
+
+        elif shunttype==1:
+            dy = self.centerwidth+self.gapwidth*1.4
+            dx = 30
+            shuntpoints = [(x0-dx,y0),(x0-dx,y0+self.shunt[5]/2-dy),(x0,y0+self.shunt[5]/2-dy),(x0,y0+self.shunt[5]/2),
+                            (x0+self.shunt[4]/2,y0+self.shunt[5]/2),(x0+self.shunt[4]/2,y0)]
+            shunt1 = cad.core.Boundary(shuntpoints, layer=self.layer_top)
+            shunt2 = cad.utils.reflect(shunt1,'y',origin=(x0+self.shunt[4]/2,y0+self.shunt[5]/2))
+            shunt3 = cad.utils.reflect(shunt1,'x',origin=(x0+self.shunt[4]/2,y0+self.shunt[5]/2))
+            shunt4 = cad.utils.rotate(shunt1,180,center=(x0+self.shunt[4]/2,y0+self.shunt[5]/2))
+            for toadd in [shunt1,shunt2,shunt3,shunt4]:
+                shunttop.add(toadd)
+        else:
+            raise KeyError('shunttype has to be 0 or 1')
+        
         return shunttop
 
 
@@ -324,6 +323,25 @@ class RFShunt():
         return squidcell
 
 
+    def gen_holey_ground_mask(self):
+        self.maskcell = cad.core.Cell('MASK')
+
+        feedmask = CPW(self.feedlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91)
+        cpwmask = CPW(self.cpwlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91)
+        maxshuntx = max([self.shunt[i] for i in [0,2,4]])/2.+self.maskmargin
+        maxshunty = max([self.shunt[i] for i in [1,3,5]])/2.+self.maskmargin
+        shuntmaskpts = [(self.cpwlist[0][0]-self.gapwidth/2-self.shunt[0]/2-maxshuntx,self.cpwlist[0][1]-maxshunty),(self.cpwlist[0][0]-self.gapwidth/2-self.shunt[0]/2+maxshuntx,self.cpwlist[0][1]+maxshunty)]
+        shuntmask = cad.shapes.Rectangle(shuntmaskpts[0],shuntmaskpts[1],layer=91)
+        boxmask = cad.shapes.Rectangle((self.endboxpoints[0][0]-2*self.maskmargin,self.endboxpoints[0][1]-self.maskmargin),
+            (self.endboxpoints[1][0]+2*self.maskmargin,self.endboxpoints[1][1]+self.maskmargin),layer=91)
+
+        self.maskcell.add(feedmask)
+        self.maskcell.add(cpwmask)
+        self.maskcell.add(shuntmask)
+        self.maskcell.add(boxmask)
+
+        return self.maskcell
+
     def gen_label(self,pos):
         """
         Generate label with termination type
@@ -331,13 +349,12 @@ class RFShunt():
         """
         labelcell = cad.core.Cell('DEV_LABEL')
         if self.termination=='squid':
-            label = cad.shapes.LineLabel(self.termination+' '+str(self.squid[2])+'x'+str(self.squid[3])+\
+            lblstrng = self.termination+' '+str(self.squid[2])+'x'+str(self.squid[3])+\
                                             '\n'+str(self.squid[0])+'x'+str(self.squid[1])+\
-                                            '\n'+str(self.length),100,
-                                         (pos[0],pos[1]),line_width=5,layer=self.layer_bottom)
+                                            '\n'+str(self.cpwlength)
+        else:
+            lblstrng = '{}\n{:.3f}'.format(self.termination,self.cpwlength)
+        label = cad.shapes.LineLabel(lblstrng,100,
+                                     (pos[0],pos[1]),line_width=5,layer=self.layer_bottom)
         labelcell.add(label)
         return labelcell
-
-
-
-
