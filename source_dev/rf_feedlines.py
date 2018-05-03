@@ -145,7 +145,7 @@ class Feedline():
         """
         
         launchpoints_top = [(0, self.feedwidth / 2.),
-                            (- self.taperl, self.taperl / 2.),
+                            (- self.taperl, self.launchw / 2.),
                             (- self.taperl - self.launchl, self.launchw / 2.),
                             (- self.taperl - self.launchl, 0),
                             (- self.taperl - self.launchl - self.launchgapx, 0),
