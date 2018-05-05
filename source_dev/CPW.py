@@ -27,7 +27,8 @@ class CPW(cad.core.Cell):
         pin = 1.,
         gap = 1.,
         layer = 1,
-        name='cpw'):   
+        name = 'cpw',
+        clean = True):   
 
 
         super(CPW, self).__init__(name)
@@ -39,6 +40,19 @@ class CPW(cad.core.Cell):
         self.gap = gap
         self.layer = layer
 
+        if clean: # remove redundant points that would otherwise create unnecessary bends in the line
+            idx = []
+            if len(points)>1:
+                (x0,y0) = points[0]
+                (x1,y1) = points[1]
+                for i,(x,y) in enumerate(points[2:]):
+                    t0 = np.arctan2(y1-y0,x1-x0)
+                    t1 = np.arctan2(y-y1,x-x1)
+                    if t0==t1:
+                        idx.append(i+1)
+                    x0,y0 = x1,y1
+                    x1,y1 = x,y
+            points = np.asarray([xy for i,xy in enumerate(points) if i not in idx])
         if len(points) == 2:
             self.add(double_line_polygon(points[0],points[1],gap,pin))
             self.length += norm(points[1]-points[0])
