@@ -126,25 +126,29 @@ class Base_Chip(cad.core.Cell):
         self.add(thetext)
 
 
-    def add_ebpg_marker(self, pos=(-3310,-1560), size=20, spacing=200, number=4, duplicate=True):
+    def add_ebpg_marker(self, pos=(-3310,-1560), size=20, spacing=200, number=4, duplicate=True, layer=None):
         """
         4 ebeam marker each 20um rectangular and 200um spaced apart
         params pos : tuple of positions
         number: How many markers (up to four)
         duplicate: set of four groups or just one at this position
+        layer: by default 22 self.layer_alignment
         """
+        if layer==None:
+            layer=self.layer_alignment
         marker = [cad.core.Cell('EBEAM')] * 4
         x = [pos[0], pos[0] + spacing, pos[0] + spacing, pos[0]]
         y = [pos[1], pos[1], pos[1] + spacing, pos[1] + spacing]
         for i in range(number):
             box = cad.shapes.Rectangle((x[i]-size/2,y[i]-size/2),(x[i]+size/2,y[i]+size/2),
-                                        layer = self.layer_alignment)
+                                        layer = layer)
             marker[0].add(box)
         if duplicate==True:
             marker[1] = cad.core.CellReference(marker[0], origin=(-2*pos[0]-spacing,-2*pos[1]-spacing))
             marker[2] = cad.core.CellReference(marker[0], origin=(0,-2*pos[1]-spacing))
             marker[3] = cad.core.CellReference(marker[0], origin=(-2*pos[0]-spacing,0))
         self.add(marker)
+        return [mm.bounding_box for mm in marker]
 
 
     def save_to_gds(self, loc = 'examples/', save = True, show = False):
@@ -171,6 +175,7 @@ class Base_Chip(cad.core.Cell):
             box = cad.shapes.Rectangle((x[i]-dim[0]/2,y[i]-dim[1]/2),(x[i]+dim[0]/2,y[i]+dim[1]/2), layer = self.layer_testpads)
             pads.add(box)
         self.add(pads)
+        return pads.bounding_box
 
 
     def add_photolitho_marker(self, pos=(0,0), layer=(1,2)):
@@ -182,6 +187,7 @@ class Base_Chip(cad.core.Cell):
         amarks = cad.core.CellReference(amarks0,origin = pos)
         marker.add(amarks)
         self.add(amarks)
+        return marker.bounding_box
     
     
     def add_photolitho_vernier(self, pos=(-500,-500), layer=(1,2)):
@@ -193,7 +199,8 @@ class Base_Chip(cad.core.Cell):
         vmarks = cad.core.CellReference(vmarks0).translate(pos)
         verniers.add(vmarks)
         self.add(verniers)
-        
+        return verniers.bounding_box
+
         
     def add_dicing_marker(self, pos=(0,0), hor=True, vert=True, span=False, length=1000):
         """
@@ -221,6 +228,7 @@ class Base_Chip(cad.core.Cell):
                 marker.add(vmarks)
 
         self.add(marker)
+        return marker.bounding_box
     
     def add_cross_single(self,pos=(0,0),dim=(400,40),clayer=5):
         """
@@ -234,6 +242,7 @@ class Base_Chip(cad.core.Cell):
         marker.add(marker1)
         marker.add(marker2)
         self.add(marker)
+        return marker.bounding_box
 
     
     def add_cross_corners(self,dim=(400,40),clayer=5):
@@ -250,6 +259,7 @@ class Base_Chip(cad.core.Cell):
         markerf3 = cad.core.CellReference(marker, origin=(self.xdim/2,-self.ydim/2))
         markerf4 = cad.core.CellReference(marker, origin=(self.xdim/2,self.ydim/2))
         [self.add(toadd) for toadd in [markerf1, markerf2, markerf3, markerf4]]
+        return marker.bounding_box
         
     def add_corners(self,dim=(400,40),clayer=5):
         """
@@ -265,6 +275,7 @@ class Base_Chip(cad.core.Cell):
         markerf3 = cad.core.CellReference(marker, origin=(self.xdim/2,-self.ydim/2),rotation=90)
         markerf4 = cad.core.CellReference(marker, origin=(self.xdim/2,self.ydim/2),rotation=180)
         [self.add(toadd) for toadd in [markerf1, markerf2, markerf3, markerf4]]
+        return marker.bounding_box
 
     '''       
     def add_TUlogo(self, pos=(0,100)):

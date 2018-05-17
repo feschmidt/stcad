@@ -11,7 +11,7 @@ class RFShunt():
         - termination = "open". Other good values are "short" (to GND) or "squid"
     """
 
-    def __init__(self, name, dict_dcbias,shunttype=0):
+    def __init__(self, name, dict_dcbias):
 
         self.name = name
         self.parts = (3000,3000,2000)
@@ -20,6 +20,12 @@ class RFShunt():
         self.boxdim = (100,40)
         self.maskmargin = 5
 
+        self.layer_bottom = 1
+        self.layer_ins = 2
+        self.layer_top = 3
+
+        self.shunttype = 0
+
         for key,val in list(dict_dcbias.items()):
             setattr(self,key,val)
 
@@ -27,12 +33,6 @@ class RFShunt():
             self.squid = self.dict_dcbias['squid']     # (loopx,loopy,jwidth,loopwidth)
         else:
             self.squid = False
-
-        self.shunttype = shunttype
-
-        self.layer_bottom = 1
-        self.layer_top = 2
-        self.layer_ins = 3
 
         self.cell = cad.core.Cell('RF CELL')
 
@@ -353,7 +353,7 @@ class RFShunt():
                                             '\n'+str(self.squid[0])+'x'+str(self.squid[1])+\
                                             '\n'+str(self.cpwlength)
         else:
-            lblstrng = '{}\n{:.3f}'.format(self.termination,self.cpwlength)
+            lblstrng = '{}\nl={:.0f} um\nAs={:.0f} um2'.format(self.termination,self.cpwlength,self.shunt[0]*self.shunt[1])
         label = cad.shapes.LineLabel(lblstrng,100,
                                      (pos[0],pos[1]),line_width=5,layer=self.layer_bottom)
         labelcell.add(label)
