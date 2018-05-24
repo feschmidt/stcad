@@ -111,7 +111,7 @@ class RFShunt():
         # Create shunt
         x1 = x0+feedlength
         y1 = y0
-        shunt = self.gen_shunt_full((x1,y1))
+        self.shunt1 = self.gen_shunt_full((x1,y1))
         
         CPWcell = cad.core.Cell('CPW')
         
@@ -148,7 +148,7 @@ class RFShunt():
         
         '''
         # Add all elements to cell
-        for toadd in [feedpart, shunt, CPWcell]:
+        for toadd in [feedpart, self.shunt1, CPWcell]:
             self.bias_cell.add(toadd)
 
         # Add Box (optional) or SQUID (optional) at the end
@@ -326,18 +326,14 @@ class RFShunt():
     def gen_holey_ground_mask(self):
         self.maskcell = cad.core.Cell('MASK')
 
-        feedmask = CPW(self.feedlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91)
-        cpwmask = CPW(self.cpwlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91)
-        maxshuntx = max([self.shunt[i] for i in [0,2,4]])/2.+self.maskmargin
-        maxshunty = max([self.shunt[i] for i in [1,3,5]])/2.+self.maskmargin
-        shuntmaskpts = [(self.cpwlist[0][0]-self.gapwidth/2-self.shunt[0]/2-maxshuntx,self.cpwlist[0][1]-maxshunty),(self.cpwlist[0][0]-self.gapwidth/2-self.shunt[0]/2+maxshuntx,self.cpwlist[0][1]+maxshunty)]
-        shuntmask = cad.shapes.Rectangle(shuntmaskpts[0],shuntmaskpts[1],layer=91)
+        self.maskcell.add(CPW(self.feedlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91))
+        self.maskcell.add(CPW(self.cpwlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91))
+        bbx, bby = self.shunt1.bounding_box
+        self.maskcell.add(cad.shapes.Rectangle((bbx[0]-self.maskmargin,bbx[1]-self.maskmargin),(bby[0]+self.maskmargin,bby[1]+self.maskmargin),layer=91))
+
         boxmask = cad.shapes.Rectangle((self.endboxpoints[0][0]-2*self.maskmargin,self.endboxpoints[0][1]-self.maskmargin),
             (self.endboxpoints[1][0]+2*self.maskmargin,self.endboxpoints[1][1]+self.maskmargin),layer=91)
 
-        self.maskcell.add(feedmask)
-        self.maskcell.add(cpwmask)
-        self.maskcell.add(shuntmask)
         self.maskcell.add(boxmask)
 
         return self.maskcell

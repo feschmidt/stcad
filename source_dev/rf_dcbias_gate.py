@@ -18,7 +18,7 @@ class RFShuntGate():
             'nbends': 2,
             'xmax': 3000}
     '''
-    def __init__(self, name, dict_dcbias, shuntgate=False, holemarker=True, shunttype=0, label=True):
+    def __init__(self, name, dict_dcbias, holemarker=True, shunttype=0, label=True):
 
         self.name = name
         self.cell = cad.core.Cell('RF CELL') 
@@ -32,12 +32,13 @@ class RFShuntGate():
         self.turnradius = 150
         self.maskmargin = 5
         self.shuntmasksize = (260,740)
+        self.shuntgate = False
+        self.gatestub = 50 # length of gate stub
 
         for key,val in list(dict_dcbias.items()):
             setattr(self,key,val)
         
         self.holemarker = holemarker
-        self.shuntgate = shuntgate
         self.shunttype = shunttype
 
         self.cpwlist = []
@@ -113,13 +114,16 @@ class RFShuntGate():
         # Create shunt
         x1 = x0+feedlength+self.gapwidth/2
         y1 = y0#-self.centerwidth/2-self.gapwidth
-        shunt = self.gen_shunt_full((x1,y1))
+        self.shunt1 = self.gen_shunt_full((x1,y1))
 
         # Connect shunt to end
         x2 = x1+self.shunt[0]+self.gapwidth/2
         y2 = y0
 
-        xspace = self.xmax
+        if not shuntgate:
+            xspace = self.launchdist - self.feedlength - self.shunt[0] - self.holedim[0]
+        else:
+            xspace = self.launchdist - self.feedlength - self.shunt[0] - self.holedim[0] - self.gatestub - self.shunt[0] - 2*self.gatestub#self.feedlength
         part2 = self.fit_CPW(x2,y2,self.length,xspace=xspace,yspace=self.ymax,gap=self.gapwidth,pin=self.centerwidth,nbends=self.nbends,turnradius=self.turnradius)
 
         # Create hole at the end
@@ -133,8 +137,8 @@ class RFShuntGate():
             gJJ_box.add(cad.shapes.Rectangle(self.jjboxpts[0],self.jjboxpts[1]))
             # Add marker for gJJ
             if holemarker == True:
-                box1=cad.shapes.Rectangle((holex0+5,holey0+40),(holex0+10,holey0+45))
-                box2=cad.shapes.Rectangle((holex0+10,holey0+35),(holex0+15,holey0+40))
+                box1=cad.shapes.Rectangle((holex0+5,holey0+hole[1]/2+5),(holex0+10,holey0+hole[1]/2+10))
+                box2=cad.shapes.Rectangle((holex0+10,holey0+hole[1]/2),(holex0+15,holey0+hole[1]/2+5))
                 gJJ_box.add(box1)
                 gJJ_box.add(box2)
                 gJJ_box.add(cad.utils.reflect(box1,'x',origin=(holex0+hole[0]/2,holey0)))
@@ -145,11 +149,32 @@ class RFShuntGate():
                 gJJ_box.add(cad.utils.rotate(box2,180,center=(holex0+hole[0]/2,holey0)))
         endhole = holex0+hole[0]
 
+        if shuntgate:
+            # Connect hole to shunt
+            self.gatecpwpts = [[endhole,y0],[endhole+self.gatestub,y0]]
+            gatecpw = CPW(self.gatecpwpts,gap=self.gapwidth,pin=self.centerwidth,layer=1)
+            
+            # Create second shunt
+            x1 = self.gatecpwpts[-1][0]
+            y1 = y0
+            self.shunt2 = self.gen_shunt_full((x1,y1))
 
-        for toadd in [part1,shunt,part2]:
+            # Connect second shunt to end
+            x2 = x1+self.shunt[0]+self.gapwidth/2
+            y2 = y0
+            self.endcpwpts = [[x2,y2],[-self.position[0],y2]]#[x2+self.feedlength,y2]]
+            endcpw = CPW(self.endcpwpts,gap=self.gapwidth,pin=self.centerwidth,layer=1)
+
+
+        for toadd in [part1,self.shunt1,part2]:
             self.bias_cell.add(toadd)
         if gJJ:
             self.bias_cell.add(gJJ_box)
+        if shuntgate:
+            self.bias_cell.add(self.shunt2)
+            self.bias_cell.add(gatecpw)
+            self.bias_cell.add(endcpw)
+
 
         return self.bias_cell
 
@@ -218,19 +243,19 @@ class RFShuntGate():
     def gen_holey_ground_mask(self):
         self.maskcell = cad.core.Cell('MASK')
 
-        feedmask = CPW(self.feedlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91)
-        cpwmask = CPW(self.cpwlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91)
-        maxshuntx = max([self.shunt[i] for i in [0,2,4]])/2.+self.maskmargin
-        maxshunty = max([self.shunt[i] for i in [1,3,5]])/2.+self.maskmargin
-        shuntmaskpts = [(self.cpwlist[0][0]-self.gapwidth/2-self.shunt[0]/2-maxshuntx,self.cpwlist[0][1]-maxshunty),(self.cpwlist[0][0]-self.gapwidth/2-self.shunt[0]/2+maxshuntx,self.cpwlist[0][1]+maxshunty)]
-        shuntmask = cad.shapes.Rectangle(shuntmaskpts[0],shuntmaskpts[1],layer=91)
+        self.maskcell.add(CPW(self.feedlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91))
+        self.maskcell.add(CPW(self.cpwlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91))
+        bbx, bby = self.shunt1.bounding_box
+        self.maskcell.add(cad.shapes.Rectangle((bbx[0]-self.maskmargin,bbx[1]-self.maskmargin),(bby[0]+self.maskmargin,bby[1]+self.maskmargin),layer=91))
         jjboxmask = cad.shapes.Rectangle((self.jjboxpts[0][0]-2*self.maskmargin,self.jjboxpts[0][1]-5*self.maskmargin),
             (self.jjboxpts[1][0]+2*self.maskmargin,self.jjboxpts[1][1]+5*self.maskmargin),layer=91)
-
-        self.maskcell.add(feedmask)
-        self.maskcell.add(cpwmask)
-        self.maskcell.add(shuntmask)
         self.maskcell.add(jjboxmask)
+
+        if self.shuntgate:
+            self.maskcell.add(CPW(self.endcpwpts,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91))
+            bbx, bby = self.shunt2.bounding_box
+            self.maskcell.add(cad.shapes.Rectangle((bbx[0]-self.maskmargin,bbx[1]-self.maskmargin),(bby[0]+self.maskmargin,bby[1]+self.maskmargin),layer=91))
+            self.maskcell.add(CPW(self.gatecpwpts,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91))
 
         return self.maskcell
 
@@ -326,15 +351,19 @@ class RFShuntGate():
         return shunttop
 
     
-    def gen_label(self,pos,text='label',height=100,lw=10):
+    def gen_label(self,pos):
         """
-        Generate label with resonator length
+        Generate label with termination type
+        if squid: squid wJJ x wlead \n wSQUID x lSQUID \n cavlength
         """
         labelcell = cad.core.Cell('DEV_LABEL')
-        #if self.termination=='squid':
-        #    label = cad.shapes.LineLabel(self.length, 100, (pos[0],pos[1]), line_width=5, layer=self.layer_bottom)
-        #else:
-        label = cad.shapes.LineLabel(text, height, (pos[0],pos[1]), line_width=lw, layer=self.layer_bottom)
+        # if self.termination=='squid':
+        #     lblstrng = self.termination+' '+str(self.squid[2])+'x'+str(self.squid[3])+\
+        #                                     '\n'+str(self.squid[0])+'x'+str(self.squid[1])+\
+        #                                     '\n'+str(self.cpwlength)
+        # else:
+        lblstrng = '{}\nl={:.0f} um\nAs={:.0f} um2'.format('gJJ',self.length,self.shunt[0]*self.shunt[1])
+        label = cad.shapes.LineLabel(lblstrng,100,
+                                     (pos[0],pos[1]),line_width=5,layer=self.layer_bottom)
         labelcell.add(label)
-        self.cell.add(labelcell)
-        return
+        return labelcell
