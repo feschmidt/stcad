@@ -1,7 +1,8 @@
 import numpy as np
 import gdsCAD as cad
-import utilities as utils
-from CPW import *
+# from .utilities import utilities as utils
+from .CPW import *
+from .testing_fillet import fillet
 
 class RFShunt():
     """
@@ -10,28 +11,28 @@ class RFShunt():
         - termination = "open". Other good values are "short" (to GND) or "squid"
     """
 
-    def __init__(self, name, dict_dcbias,shunttype=0):
+    def __init__(self, name, dict_dcbias):
 
         self.name = name
-        self.parts = (3e3,3e3,2e3)
+        self.parts = (3000,3000,2000)
         self.turnradius = 1e3
         self.termination='open'
         self.boxdim = (100,40)
         self.maskmargin = 5
 
-        for key,val in dict_dcbias.items():
+        self.layer_bottom = 1
+        self.layer_ins = 2
+        self.layer_top = 3
+
+        self.shunttype = 0
+
+        for key,val in list(dict_dcbias.items()):
             setattr(self,key,val)
 
         if self.termination=='squid':
             self.squid = self.dict_dcbias['squid']     # (loopx,loopy,jwidth,loopwidth)
         else:
             self.squid = False
-
-        self.shunttype = shunttype
-
-        self.layer_bottom = 1
-        self.layer_top = 2
-        self.layer_ins = 3
 
         self.cell = cad.core.Cell('RF CELL')
 
@@ -110,7 +111,7 @@ class RFShunt():
         # Create shunt
         x1 = x0+feedlength
         y1 = y0
-        shunt = self.gen_shunt_full((x1,y1))
+        self.shunt1 = self.gen_shunt_full((x1,y1))
         
         CPWcell = cad.core.Cell('CPW')
         
@@ -122,10 +123,11 @@ class RFShunt():
         self.cpwlist = cpwlist
         cpw = CPW(self.cpwlist,pin=self.centerwidth,gap=self.gapwidth,turn_radius=self.turnradius,layer=self.layer_bottom)
         self.cpwlength = cpw.length
-        # print 'Input length:', length
-        # print 'Available xspace:', xspace
-        print 'Resonator length:', cpw.length
-        # print 'Number of bends:', nbends
+        ### Not yet implemented:
+        # print('Input length:', self.length)
+        # print('Available xspace:', xspace)
+        # print('Resonator length:', cpw.length)
+        # print('Number of bends:', nbends)
 
         CPWcell.add(cpw)
         '''
@@ -137,7 +139,6 @@ class RFShunt():
         part4l = self.length - part2l - np.pi*radius_cav - part3l
         if part4l<0:
             raise ValueError("Cavity length is too short! Partial cavity length already exceeds desired value.")
-
         part4points = [(x6, y6),
                     (x6-part4l, y6),
                     (x6-part4l, y6+self.gapwidth),
@@ -147,26 +148,27 @@ class RFShunt():
         
         '''
         # Add all elements to cell
-        for toadd in [feedpart, shunt, CPWcell]:
+        for toadd in [feedpart, self.shunt1, CPWcell]:
             self.bias_cell.add(toadd)
 
         # Add Box (optional) or SQUID (optional) at the end
+        x7 = self.cpwlist[-1][0]
+        y7 = self.cpwlist[-1][1]
+        
         if self.termination == "short":
-            print "Termination: Short to ground"
+            self.endboxpoints=[(x7,y7-self.boxdim[1]/2.),(x7,y7+self.boxdim[1]/2.)]
+            print("Termination: Short to ground")
         elif self.termination == "open":
-            x7 = self.cpwlist[-1][0]
-            y7 = self.cpwlist[-1][1]
             self.endboxpoints=[(x7-self.boxdim[0],y7-self.boxdim[1]/2.),(x7,y7+self.boxdim[1]/2.)]
             endbox = cad.shapes.Rectangle(self.endboxpoints[0],self.endboxpoints[1])
-            
             self.bias_cell.add(endbox)
-            print "Termination: Open to ground"
+            print("Termination: Open to ground")
         elif self.termination == "squid":
             squid1 = self.gen_squid_base((x6-part4l,y6+self.gapwidth),(100,40))
             squid2 = self.gen_squid_top((x6-part4l,y6+self.gapwidth+self.centerwidth/2.),(100,40))
             self.bias_cell.add(squid1)
             self.bias_cell.add(squid2)
-            print "Termination: SQUID "+str(self.squid[2])+" "+str(self.squid[0])+'x'+str(self.squid[1])+" to ground"
+            print("Termination: SQUID "+str(self.squid[2])+" "+str(self.squid[0])+'x'+str(self.squid[1])+" to ground")
         else:
             raise ValueError("Wrong termination specified. Good values are short (default), open, squid.")
 
@@ -324,18 +326,14 @@ class RFShunt():
     def gen_holey_ground_mask(self):
         self.maskcell = cad.core.Cell('MASK')
 
-        feedmask = CPW(self.feedlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91)
-        cpwmask = CPW(self.cpwlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91)
-        maxshuntx = max([self.shunt[i] for i in [0,2,4]])/2.+self.maskmargin
-        maxshunty = max([self.shunt[i] for i in [1,3,5]])/2.+self.maskmargin
-        shuntmaskpts = [(self.cpwlist[0][0]-self.shunt[0]/2-maxshuntx,self.cpwlist[0][1]-maxshunty),(self.cpwlist[0][0]-self.shunt[0]/2+maxshuntx,self.cpwlist[0][1]+maxshunty)]
-        shuntmask = cad.shapes.Rectangle(shuntmaskpts[0],shuntmaskpts[1],layer=91)
+        self.maskcell.add(CPW(self.feedlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91))
+        self.maskcell.add(CPW(self.cpwlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91))
+        bbx, bby = self.shunt1.bounding_box
+        self.maskcell.add(cad.shapes.Rectangle((bbx[0]-self.maskmargin,bbx[1]-self.maskmargin),(bby[0]+self.maskmargin,bby[1]+self.maskmargin),layer=91))
+
         boxmask = cad.shapes.Rectangle((self.endboxpoints[0][0]-2*self.maskmargin,self.endboxpoints[0][1]-self.maskmargin),
             (self.endboxpoints[1][0]+2*self.maskmargin,self.endboxpoints[1][1]+self.maskmargin),layer=91)
 
-        self.maskcell.add(feedmask)
-        self.maskcell.add(cpwmask)
-        self.maskcell.add(shuntmask)
         self.maskcell.add(boxmask)
 
         return self.maskcell
@@ -350,15 +348,9 @@ class RFShunt():
             lblstrng = self.termination+' '+str(self.squid[2])+'x'+str(self.squid[3])+\
                                             '\n'+str(self.squid[0])+'x'+str(self.squid[1])+\
                                             '\n'+str(self.cpwlength)
-        elif self.termination=='open':
-            lblstrng = '{}\n{:.3f}'.format(self.termination,self.cpwlength)
+        else:
+            lblstrng = '{}\nl={:.0f} um\nAs={:.0f} um2'.format(self.termination,self.cpwlength,self.shunt[0]*self.shunt[1])
         label = cad.shapes.LineLabel(lblstrng,100,
                                      (pos[0],pos[1]),line_width=5,layer=self.layer_bottom)
         labelcell.add(label)
         return labelcell
-
-
-
-
-
-
