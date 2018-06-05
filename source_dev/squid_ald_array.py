@@ -24,7 +24,7 @@ class SQUIDchip():
         self.layer_bottom = 1
         self.layer_top = 2
 
-    def gen_junctions(self, dim = (50,50), doublepads=False, tbar_bot=True, jjleadwidth = 0):
+    def gen_junctions(self, dim = (50,50), doublepads=False, tbar_bot=True, jjleadwidth = 0, cwidth=20, drain=100,source=15):
         '''
         Consists of a centerline that spreads out to 6 individual SQUIDs
         First creates bottom row of JJs, finally uses dc_24pin to generate the full 4x4 array
@@ -43,9 +43,9 @@ class SQUIDchip():
         if self.tlength==None:
             self.tlength = (self.padwidth+self.padspacing)*(amount)/2.-self.padwidth/2.
     
-        cwidth = 20.
-        drain = 100.
-        source = 15.
+        cwidth = cwidth
+        drain = drain
+        source = source
         # Place drain strip (ground)
         if tbar_bot: #if using tbar geometry
             centerpoints = [(0, tripeak - cwidth / 2),
@@ -62,7 +62,7 @@ class SQUIDchip():
         self.padgroup = [cad.core.Cell('padgroup')] * 2
         self.padgroup[0].add(centerline)
 
-        for k,i in zip(jjlength,list(range(-amount/2+1,amount/2+2))):
+        for k,i in zip(jjlength,list(range(-amount//2+1,amount//2+2))):
             if i>=0:
                 k=k-self.jjstep
             xs = (self.padwidth + self.padspacing) * i
