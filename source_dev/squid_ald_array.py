@@ -77,8 +77,8 @@ class SQUIDchip():
                                     [xs+dim[0]/2,tripeak+source-dim[1]+extra],
                                     [xs+dim[0]/2,tripeak+source+(k+.5)*self.jjstep+extra]],
                                     self.jjwidth, layer=self.layer_top)
-            junction_label = cad.shapes.LineLabel(k,150,(xs-self.padwidth/2,self.y0-self.padlength), layer=self.layer_top)
-            array_label = cad.shapes.LineLabel(self.jjwidth,150,(-100,self.y0-self.padlength), layer=self.layer_bottom)
+            junction_label = cad.shapes.LineLabel('{:.1f}'.format(k),150,(xs-self.padwidth/2,self.y0-self.padlength), layer=self.layer_top)
+            array_label = cad.shapes.LineLabel('{:.1f}'.format(self.jjwidth),150,(-100,self.y0-self.padlength), layer=self.layer_bottom)
             
             pad_bot = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + self.padwidth + xs,self.y0 + self.padlength), layer = self.layer_bottom)
             pad_top = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + self.padwidth + xs,self.y0 + self.padlength), layer = self.layer_top)
