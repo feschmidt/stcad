@@ -749,7 +749,7 @@ class SpiralInductor(cad.core.Cell):
             self.C = self.do*22.5e-15/67.
         else:
             self.C = 1.
-            print 'No formula for C'
+            print('No formula for C')
         self.Lk = self.length/self.line_width*kinetic_inductance
         self.self_resonance = 1./np.sqrt((self.Lk+self.Lg)*self.C)/2./np.pi
 
@@ -925,7 +925,7 @@ class MeanderingInductor(MeanderingLine):
         pitch = cond_spacing+cond_width
 
         if n_legs%2==1:
-            print "Meandering inductors with odd number of legs not yet implemented"
+            print("Meandering inductors with odd number of legs not yet implemented")
             return
 
         meander = []

@@ -13,10 +13,10 @@ inductor = SpiralInductor(
         line_width = 0.5,
         spacing = 1,kinetic_inductance = 0.)
 
-print inductor.Lg*1e9+inductor.Lk*1e9
-print inductor.C
-print inductor.self_resonance/1e9
-print inductor.length
+print(inductor.Lg*1e9+inductor.Lk*1e9)
+print(inductor.C)
+print(inductor.self_resonance/1e9)
+print(inductor.length)
 inductor.show()
 
 

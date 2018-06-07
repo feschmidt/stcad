@@ -18,7 +18,7 @@ w_dolan_bridge = 0.12
 appr_overlap = (2 * (320 - 45) * np.tan(35 * np.pi / 180) -
                 w_dolan_bridge * 1e3) / 1e3 + 0.1
 
-print appr_overlap
+print(appr_overlap)
 dict_junctions = {'bjunction_width': 2,
                   'bjunction_height':10,
                   'junction_width': 0.1,

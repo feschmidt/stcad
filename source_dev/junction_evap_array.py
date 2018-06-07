@@ -1,6 +1,6 @@
 import numpy as np
 import gdsCAD as cad
-import transmon
+from . import transmon
 import time
 
 class Junctiontest():

@@ -1,6 +1,6 @@
 import numpy as np
 import gdsCAD as cad
-import dc_24pin
+from . import dc_24pin
 
 class Junctionchip():
 

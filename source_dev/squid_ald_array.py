@@ -1,6 +1,6 @@
 import numpy as np
 import gdsCAD as cad
-import dc_24pin
+from . import dc_24pin
 
 class SQUIDchip():
 
@@ -13,9 +13,9 @@ class SQUIDchip():
         '''
  
         self.name = name
-        for key,val in dict_pads.items():
+        for key,val in list(dict_pads.items()):
             setattr(self,key,val)
-        for key,val in dict_junctions.items():
+        for key,val in list(dict_junctions.items()):
             setattr(self,key,val)
         self.x0 = x0
         self.y0 = y0
@@ -24,7 +24,7 @@ class SQUIDchip():
         self.layer_bottom = 1
         self.layer_top = 2
 
-    def gen_junctions(self, dim = (50,50), doublepads=False, tbar_bot=True, jjleadwidth = 0):
+    def gen_junctions(self, dim = (50,50), doublepads=False, tbar_bot=True, jjleadwidth = 0, cwidth=20, drain=100,source=15):
         '''
         Consists of a centerline that spreads out to 6 individual SQUIDs
         First creates bottom row of JJs, finally uses dc_24pin to generate the full 4x4 array
@@ -43,9 +43,9 @@ class SQUIDchip():
         if self.tlength==None:
             self.tlength = (self.padwidth+self.padspacing)*(amount)/2.-self.padwidth/2.
     
-        cwidth = 20.
-        drain = 100.
-        source = 15.
+        cwidth = cwidth
+        drain = drain
+        source = source
         # Place drain strip (ground)
         if tbar_bot: #if using tbar geometry
             centerpoints = [(0, tripeak - cwidth / 2),
@@ -62,7 +62,7 @@ class SQUIDchip():
         self.padgroup = [cad.core.Cell('padgroup')] * 2
         self.padgroup[0].add(centerline)
 
-        for k,i in zip(jjlength,range(-amount/2+1,amount/2+2)):
+        for k,i in zip(jjlength,list(range(-amount//2+1,amount//2+2))):
             if i>=0:
                 k=k-self.jjstep
             xs = (self.padwidth + self.padspacing) * i
@@ -77,8 +77,8 @@ class SQUIDchip():
                                     [xs+dim[0]/2,tripeak+source-dim[1]+extra],
                                     [xs+dim[0]/2,tripeak+source+(k+.5)*self.jjstep+extra]],
                                     self.jjwidth, layer=self.layer_top)
-            junction_label = cad.shapes.LineLabel(k,150,(xs-self.padwidth/2,self.y0-self.padlength), layer=self.layer_top)
-            array_label = cad.shapes.LineLabel(self.jjwidth,150,(-100,self.y0-self.padlength), layer=self.layer_bottom)
+            junction_label = cad.shapes.LineLabel('{:.1f}'.format(k),150,(xs-self.padwidth/2,self.y0-self.padlength), layer=self.layer_top)
+            array_label = cad.shapes.LineLabel('{:.1f}'.format(self.jjwidth),150,(-100,self.y0-self.padlength), layer=self.layer_bottom)
             
             pad_bot = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + self.padwidth + xs,self.y0 + self.padlength), layer = self.layer_bottom)
             pad_top = cad.shapes.Rectangle((self.x0 + xs,self.y0),(self.x0 + self.padwidth + xs,self.y0 + self.padlength), layer = self.layer_top)

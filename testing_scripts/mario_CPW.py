@@ -9,7 +9,7 @@ current_directory = os.path.dirname(os.path.abspath(inspect.getfile(inspect.curr
 chipsize = 250
 chip = Base_Chip('CPW', chipsize, chipsize,label=False)
 cp = CPW([[-100,-50],[-50,-50],[-50,0],[50,0],[50,-50],[0,-50]],pin=3,gap=5)
-print cp.length
+print(cp.length)
 cp.add_launcher('beginning')
 cp.add_open('end')
 chip.add_component(cp, (0,0))

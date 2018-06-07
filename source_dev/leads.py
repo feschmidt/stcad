@@ -3,7 +3,8 @@ import gdsCAD as cad
 
 class Leads():
 
-	def __init(self,name,dict_leads)
+
+	def __init__(self,name,dict_leads):
 
 
 		base_width = self.dict_leads.get('base_width',  10)
@@ -19,16 +20,16 @@ class Leads():
 
 	def draw(self):
 
-		fork_points = [(-0.5*base_width,0),
-						(0.5*base_width,0),
-						(0.5*top_width,base_height),
-						(0.5*top_width,fork_height),
-						(0.5*top_width - top_width/3.,fork_height),
-						(0.5*top_width - top_width/3.,fork_height-fork_depth),
-						(0.5*top_width - 2*top_width/3.,fork_height-fork_depth),
-						(0.5*top_width - 2*top_width/3.,fork_height),
-						(-0.5*top_width ,fork_height),
-						(-0.5*top_width,base_height)]
+		fork_points = [(-0.5*base_width,0), 
+			(0.5*base_width,0),
+			(0.5*top_width,base_height),
+			(0.5*top_width,fork_height),
+			(0.5*top_width - top_width/3.,fork_height),
+			(0.5*top_width - top_width/3.,fork_height-fork_depth),
+			(0.5*top_width - 2*top_width/3.,fork_height-fork_depth),
+			(0.5*top_width - 2*top_width/3.,fork_height),
+			(-0.5*top_width ,fork_height),
+			(-0.5*top_width,base_height)]
 
 		fork = cad.core.Boundary(fork_points,
 								layer = layer)
@@ -42,11 +43,8 @@ class Leads():
 			corners['TR6'] = 6
 			corners['TL7'] = 7
 			fork_lower = utilities.make_rounded_edges(fork, 
-											radius=0.3,
-											dict_corners=corners)
-
-
-
+				radius=0.3,
+				dict_corners=corners)
 
 		else:
 			fork_lower = fork
