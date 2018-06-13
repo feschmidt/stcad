@@ -22,6 +22,8 @@ def angle(vec):
 def norm(vec):
     return np.sqrt(vec[0]**2+vec[1]**2)
 
+def round_half(x):
+    return  int( round(2*x)/x )
 
 
 class WaffleCapacitor(cad.core.Cell):
@@ -647,7 +649,7 @@ class CPW(cad.core.Cell):
         if dir == 'left':
             angle = 180
         elif dir == 'down':
-            angle = -90
+            angle = -90 
         elif dir == 'up':
             angle = 90
         elif dir == 'right':
@@ -673,7 +675,7 @@ class CPW(cad.core.Cell):
 
             
             
-    def add_airbridges(self, size_block, size_bridge, width, spacing, layers = [2,3]):
+    def add_airbridges(self, size_block, size_bridge, width, density, layers = [2,3]):
         rect_block_1 = cad.shapes.Rectangle( (-width/2 - size_block[0], -size_block[1]/2), (-width/2, size_block[1]/2), layer = layers[0] )
         rect_block_2 = cad.shapes.Rectangle( (width/2, -size_block[1]/2), (width/2 + size_block[0], size_block[1]/2), layer = layers[0] )
         rect_bridge = cad.shapes.Rectangle( (-size_bridge[0]/2, -size_bridge[1]/2),(size_bridge[0]/2, size_bridge[1]/2) , layer = layers[1])
@@ -681,20 +683,44 @@ class CPW(cad.core.Cell):
         cell.add(rect_block_1)
         cell.add(rect_block_2)
         cell.add(rect_bridge)
- 
-        for i in range(len(self.points)-1):
-            points = np.array(self.points)
-            rd = ( points[i+1]-points[i] ) # relative distances between two points
- 
-            if int(rd[0]) != 0 and int( ( abs(rd[0]) - 2*self.turn_radius)/spacing ) > 0:
-                for j in range(0, int( ( abs(rd[0]) - 2*self.turn_radius)/spacing )):
-                    x = points[i][0] + np.sign(rd[0])*(spacing/2. + j*spacing) 
-                    self.add(cell, origin = ( x, points[i][1]), rotation = 90)
-            
-            elif int ((abs(rd[1]) - 2*self.turn_radius)/spacing) > 0:    
-                for j in range(0, int( ( abs(rd[1]) - 2*self.turn_radius)/spacing )):
-                    y = points[i][1] + np.sign(rd[1])*(spacing/2. + j*spacing) 
-                    self.add(cell, origin = ( points[i][0], y))  
+        points = np.array(self.points)
+        spacing = 1/density
+
+        if len(self.points) == 2:
+            rd = ( points[1]-points[0] ) # relative distances between two points
+            if rd[0]!= 0:
+                n = int(abs(rd[0]*density))
+                for j in range(0, n ):
+                    x = points[0][0] + np.sign(rd[0])*(spacing/2. + j*spacing) 
+                    self.add(cell, origin = ( x, points[0][1]), rotation = 90)
+            else:  
+                n = int(abs(rd[1]*density))
+                for j in range(0, n):
+                    y = points[0][1] + np.sign(rd[1])*(spacing/2. + j*spacing) 
+                    self.add(cell, origin = ( points[0][0], y))  
+        else:
+            for i in range(0,len(self.points)-1):
+
+                if i==0 or i==int((len(self.points) -2)):
+                    bends = 1
+                else:
+                    bends = 2
+
+                rd = (points[i+1]-points[i]) # relative distances between two points
+                lx = abs(rd[0]) - bends*self.turn_radius
+                ly = abs(rd[1]) - bends*self.turn_radius 
+                if int(density*lx) >= 1:
+                    n = int(density*lx)
+                    spacing = lx/n
+                    for j in range(0, n):
+                        x = points[i][0] + np.sign(rd[0])*(spacing/2. + bends*self.turn_radius + j*spacing) 
+                        self.add(cell, origin = ( x, points[i][1]), rotation = 90)
+                elif int(density*ly) >= 1:
+                    n = int(density*ly)
+                    spacing = ly/n
+                    for j in range(0,n):
+                        y = points[i][1] + np.sign(rd[1])*(spacing/2. + bends*self.turn_radius + j*spacing) 
+                        self.add(cell, origin = ( points[i][0], y))  
    
    
 
@@ -755,8 +781,10 @@ class CPW(cad.core.Cell):
 
 
     def add_mask( self, width , layer=91):
-        'this functions returns a mask following the centreline of  the CPW. This can also be used as a skirt 
-        for the holyeground'
+        """
+        this functions returns a mask following the centreline of  the CPW. This can also be used as a skirt 
+        for the holyeground
+        """
         cad.core.default_layer = layer
         points = self.points
         turn_radius = self.turn_radius
