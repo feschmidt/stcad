@@ -1,6 +1,6 @@
 import numpy as np
 from stcad.source_dev.chip import Base_Chip
-from stcad.source_dev.utilities import double_line_polygon,double_arc_polygon,line_polygon
+from stcad.source_dev.utilities import double_line_polygon,double_arc_polygon,line_polygon,arc_polygon
 import gdsCAD as cad
 import copy
 import numpy as np
@@ -28,7 +28,8 @@ class CPW(cad.core.Cell):
         gap = 1.,
         layer = 1,
         name = 'cpw',
-        clean = True):   
+        clean = True,
+        writegaps = True):   
 
 
         super(CPW, self).__init__(name)
@@ -54,7 +55,10 @@ class CPW(cad.core.Cell):
                     x1,y1 = x,y
             points = np.asarray([xy for i,xy in enumerate(points) if i not in idx])
         if len(points) == 2:
-            self.add(double_line_polygon(points[0],points[1],gap,pin))
+            if writegaps:
+                self.add(double_line_polygon(points[0],points[1],gap,pin))
+            else:
+                self.add(line_polygon(points[0],points[1],pin))
             self.length += norm(points[1]-points[0])
         else:
             n_last = len(points)-1
@@ -71,14 +75,24 @@ class CPW(cad.core.Cell):
                 if angle_delta > 180.:
                     angle_delta-=360.
                 sec.append(p_before)
-                self.add(double_line_polygon(sec[0],sec[1],gap,pin))
+                if writegaps:
+                    self.add(double_line_polygon(sec[0],sec[1],gap,pin))
+                else:
+                    self.add(line_polygon(sec[0],sec[1],pin))
                 self.length += norm(sec[1]-sec[0])
-                self.add(double_arc_polygon(curve_center, turn_radius,gap,pin,\
+                if writegaps:
+                    self.add(double_arc_polygon(curve_center, turn_radius,gap,pin,\
+                                    initial_angle=angle_i, final_angle=angle_i+angle_delta, number_of_points = 199))
+                else:
+                    self.add(arc_polygon(curve_center, turn_radius,pin,\
                                     initial_angle=angle_i, final_angle=angle_i+angle_delta, number_of_points = 199))
                 self.length += 2*np.pi*turn_radius*abs(angle_delta)/360.
                 sec=[p_after]
             sec.append([points[n_last][0],points[n_last][1]])
-            self.add(double_line_polygon(sec[0],sec[1],gap,pin))
+            if writegaps:
+                self.add(double_line_polygon(sec[0],sec[1],gap,pin))
+            else:
+                self.add(line_polygon(sec[0],sec[1],pin))
             self.length += norm(sec[1]-sec[0])
 
     def add_launcher(self,pos,bonding_pad_length = 50,bonding_pad_gap = 30,bonding_pad_width =40,taper_length = 100,buffer_length = 30):
