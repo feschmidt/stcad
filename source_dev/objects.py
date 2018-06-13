@@ -549,7 +549,6 @@ class CPW(cad.core.Cell):
         layer = 1,
         name=''):   
 
-
         super(CPW, self).__init__(name)
         cad.core.default_layer = layer
         points = np.array(points)
@@ -558,6 +557,8 @@ class CPW(cad.core.Cell):
         self.pin = pin
         self.gap = gap
         self.layer = layer
+        self.turn_radius = turn_radius
+
         if len(points) == 2:
             self.add(double_line_polygon(points[0],points[1],gap,pin))
             self.length += norm(points[1]-points[0])
@@ -575,8 +576,10 @@ class CPW(cad.core.Cell):
                     angle_delta+=360.
                 if angle_delta > 180.:
                     angle_delta-=360.
+
                 sec.append(p_before)
                 self.add(double_line_polygon(sec[0],sec[1],gap,pin))
+                angles = np.linspace(angle_i,angle_i+angle_delta, 199).T *np.pi/180.
                 self.length += norm(sec[1]-sec[0])
                 self.add(double_arc_polygon(curve_center, turn_radius,gap,pin,\
                                     initial_angle=angle_i, final_angle=angle_i+angle_delta, number_of_points = 199))
@@ -586,7 +589,8 @@ class CPW(cad.core.Cell):
             self.add(double_line_polygon(sec[0],sec[1],gap,pin))
             self.length += norm(sec[1]-sec[0])
 
-    def add_launcher(self,pos,bonding_pad_length = 400,bonding_pad_gap = 200,bonding_pad_width =500,taper_length = 500,buffer_length = 100):
+    def add_launcher(self,pos,bonding_pad_length = 400,bonding_pad_gap = 200,bonding_pad_width =500,taper_length = 500,buffer_length = 100, add_skirt=False, skirt_distance=5, skirt_layer=91):
+
         if pos == 'beginning' or pos=='b':
             p_0 = self.points[0]
             p_1 = self.points[1]
@@ -595,6 +599,7 @@ class CPW(cad.core.Cell):
             p_1 = self.points[-2]
         else:
             raise ValueError("First argumnet should be either 'beginning' or 'b' or 'end' or 'e'")
+
         cad.core.default_layer=self.layer
         
         vec = p_1-p_0
@@ -612,32 +617,43 @@ class CPW(cad.core.Cell):
         startpoint = 0
         transl = pos
 
-        launchpoints_top = [[-buffer_length-taper_length-bonding_pad_length, 0 ],
-                            [-buffer_length-taper_length-bonding_pad_length, bonding_pad_gap + bonding_pad_width/2. ],
-                            [-buffer_length-taper_length-bonding_pad_length, bonding_pad_gap + bonding_pad_width/2. ],
-                            [-taper_length, bonding_pad_gap + bonding_pad_width/2. ],
-                            [0, self.gap + self.pin/2. ],
-                            [0, self.pin/2. ],
-                            [-taper_length, bonding_pad_width/2. ],
-                            [-taper_length-bonding_pad_length, bonding_pad_width/2. ],
-                            [-taper_length-bonding_pad_length,0. ]]
+        launchpoints_top = [[-buffer_length-taper_length-bonding_pad_length, 0 ],\
+                [-buffer_length-taper_length-bonding_pad_length, bonding_pad_gap + bonding_pad_width/2. ],\
+                [-buffer_length-taper_length-bonding_pad_length, bonding_pad_gap + bonding_pad_width/2. ],\
+                [-taper_length, bonding_pad_gap + bonding_pad_width/2. ],\
+                [0, self.gap + self.pin/2. ],\
+                [0, self.pin/2. ],\
+                [-taper_length, bonding_pad_width/2. ],\
+                [-taper_length-bonding_pad_length, bonding_pad_width/2. ],\
+                [-taper_length-bonding_pad_length,0. ]]
 
-        launcher1 = cad.core.Boundary(launchpoints_top,layer = self.layer)
-        launcher2 = cad.utils.reflect(launcher1, 'x')
 
-        launcherlist = cad.core.Elements([launcher1, launcher2])
+        cell = cad.core.Cell('launcher')
+        cell.add(cad.core.Boundary(launchpoints_top,layer = self.layer))
+        cell.add(cad.utils.reflect(cad.core.Boundary(launchpoints_top,layer = self.layer), 'x'))
+
+      
+        if add_skirt == True:	
+            skirtpoints = [[ -buffer_length-taper_length-bonding_pad_length, -skirt_distance - bonding_pad_gap - bonding_pad_width/2. ],\
+              [-buffer_length-taper_length-bonding_pad_length,skirt_distance + bonding_pad_gap + bonding_pad_width/2. ],\
+              [-taper_length, skirt_distance+bonding_pad_gap + bonding_pad_width/2. ],\
+              [0, self.gap + self.pin/2. + skirt_distance ],\
+              [0, -self.gap - self.pin/2. - skirt_distance ],\
+              [-taper_length, -skirt_distance-bonding_pad_gap-bonding_pad_width/2. ]]
+
+            skirt = cad.core.Boundary( skirtpoints, layer = skirt_layer)
+            cell.add(skirt)
 
         if dir == 'left':
-            launcherlist = cad.utils.reflect(launcherlist, 'y')
+            angle = 180
         elif dir == 'down':
-            launcherlist = cad.utils.rotate(launcherlist, -90)
+            angle = -90
         elif dir == 'up':
-            launcherlist = cad.utils.rotate(launcherlist, 90)
+            angle = 90
         elif dir == 'right':
-            pass
-
-        launcherlist = cad.utils.translate(launcherlist, p_0)
-        self.add(launcherlist)
+            angle=0
+  
+        self.add(cell, p_0, angle)
 
     def add_open(self,pos,length = 10):
         if pos == 'beginning' or pos=='b':
@@ -655,6 +671,125 @@ class CPW(cad.core.Cell):
         vec*=length
         self.add(line_polygon(p_1,p_1+vec, self.gap*2.+self.pin))
 
+            
+            
+    def add_airbridges(self, size_block, size_bridge, width, spacing, layers = [2,3]):
+        rect_block_1 = cad.shapes.Rectangle( (-width/2 - size_block[0], -size_block[1]/2), (-width/2, size_block[1]/2), layer = layers[0] )
+        rect_block_2 = cad.shapes.Rectangle( (width/2, -size_block[1]/2), (width/2 + size_block[0], size_block[1]/2), layer = layers[0] )
+        rect_bridge = cad.shapes.Rectangle( (-size_bridge[0]/2, -size_bridge[1]/2),(size_bridge[0]/2, size_bridge[1]/2) , layer = layers[1])
+        cell = cad.core.Cell('bridge')
+        cell.add(rect_block_1)
+        cell.add(rect_block_2)
+        cell.add(rect_bridge)
+ 
+        for i in range(len(self.points)-1):
+            points = np.array(self.points)
+            rd = ( points[i+1]-points[i] ) # relative distances between two points
+ 
+            if int(rd[0]) != 0 and int( ( abs(rd[0]) - 2*self.turn_radius)/spacing ) > 0:
+                for j in range(0, int( ( abs(rd[0]) - 2*self.turn_radius)/spacing )):
+                    x = points[i][0] + np.sign(rd[0])*(spacing/2. + j*spacing) 
+                    self.add(cell, origin = ( x, points[i][1]), rotation = 90)
+            
+            elif int ((abs(rd[1]) - 2*self.turn_radius)/spacing) > 0:    
+                for j in range(0, int( ( abs(rd[1]) - 2*self.turn_radius)/spacing )):
+                    y = points[i][1] + np.sign(rd[1])*(spacing/2. + j*spacing) 
+                    self.add(cell, origin = ( points[i][0], y))  
+   
+   
+
+    def add_flux_bias_short(self, radius_rounding_corner = 2, total_length = 60, launcher_length = 30, final_pad_width = 6, final_pad_gap = 23.5, add_skirt = False, skirt_distance = 5, skirt_layer = 91):
+        self.total_length = total_length
+        cad.core.default_layer = self.layer
+        pts = ((0, self.pin/2),\
+                (launcher_length, final_pad_width/2),\
+                (total_length - radius_rounding_corner, final_pad_width/2))
+            
+        # first rounded corner
+        angles = np.linspace(-np.pi/2, 0, 50)
+        pts_temp = np.vstack((np.cos(angles), np.sin(angles))).T*radius_rounding_corner
+        pts_temp = np.add(pts_temp, (total_length - radius_rounding_corner, final_pad_width/2 + radius_rounding_corner))
+        pts = np.vstack((pts, pts_temp))
+        pts = np.vstack((pts, (total_length, final_pad_width/2+final_pad_gap-radius_rounding_corner)))
+
+        # second rounded corner
+        angles = np.linspace(0, np.pi/2, 50)
+        pts_temp = np.vstack((np.cos(angles), np.sin(angles))).T*radius_rounding_corner
+        pts_temp = np.add(pts_temp, (total_length-radius_rounding_corner, final_pad_width/2 + final_pad_gap - radius_rounding_corner))
+        pts = np.vstack((pts, pts_temp))
+        pts = np.vstack((pts, (launcher_length, final_pad_width/2 + final_pad_gap),
+                             (0, self.pin/2+self.gap)))
+        top_part = cad.core.Boundary(pts)
+
+        # mirror top part
+        bottom_part = cad.utils.reflect(top_part, 'x')
+        delta = (self.points[-1] - self.points[-2])
+
+        if delta[0] == 0:
+            if delta[1] < 0:
+                angle = -90
+            else:
+                angle = 90
+        elif delta[1] == 0:
+            if delta[0] < 0:
+                angle = 180
+            else: 
+                angle = 0
+	
+        cell = cad.core.Cell('flux_bias')
+        cell.add([ bottom_part, top_part] )
+        self.add(cell, self.points[-1], angle)
+	   
+        if add_skirt == True:
+       	    pts = [(0,skirt_distance+self.gap+self.pin/2.),
+                 (launcher_length, final_pad_width/2 + final_pad_gap+skirt_distance),
+                 (total_length, final_pad_width/2 + final_pad_gap+skirt_distance),
+                 (total_length, -(final_pad_width/2 + final_pad_gap+skirt_distance)),
+                 (launcher_length, -(final_pad_width/2 + final_pad_gap+skirt_distance)),
+                 (0, -skirt_distance - self.gap -self.pin/2)]
+		 
+            skirt = cad.core.Cell('skirt')  
+            skirt.add( cad.core.Boundary(pts, layer = skirt_layer))
+            self.add(skirt, self.points[-1], angle)
+
+
+
+    def add_mask( self, width , layer=91):
+        'this functions returns a mask following the centreline of  the CPW. This can also be used as a skirt 
+        for the holyeground'
+        cad.core.default_layer = layer
+        points = self.points
+        turn_radius = self.turn_radius
+
+        if len(points) == 2:
+            self.add( line_polygon(points[0], points[1], width))
+            self.length += norm(points[1]-points[0])
+        else:
+            n_last = len(points)-1
+            sec = [points[0]]
+            for i in range(1,n_last):
+                p = np.array(points[i])
+                p_before = np.array([points[i][0]+turn_radius*sign(points[i-1][0]-points[i][0]),points[i][1]+turn_radius*sign(points[i-1][1]-points[i][1])])
+                p_after = np.array([points[i][0]+turn_radius*sign(points[i+1][0]-points[i][0]),points[i][1]+turn_radius*sign(points[i+1][1]-points[i][1])])
+                curve_center = p_after + p_before - p
+                angle_i = angle(p_before - curve_center)
+                angle_delta = angle(p_after - curve_center)-angle_i
+
+                if angle_delta < -180.:
+                    angle_delta+=360.
+                if angle_delta > 180.:
+                    angle_delta-=360.
+
+                sec.append(p_before)
+                self.add(line_polygon(sec[0], sec[1],  width))
+                angles = np.linspace(angle_i,angle_i+angle_delta, 199).T *np.pi/180.
+                self.length += norm(sec[1]-sec[0])
+                self.add(arc_polygon(curve_center, turn_radius,width,\
+                                    initial_angle=angle_i, final_angle=angle_i+angle_delta, number_of_points = 199))
+                sec=[p_after]
+            sec.append([points[n_last][0],points[n_last][1]])
+            self.add( line_polygon(sec[0], sec[1], width))
+		
 
 
 class SpiralInductor(cad.core.Cell):
@@ -1011,3 +1146,132 @@ class MeanderAndDrum(cad.core.Cell):
             name = name+"_m4"))
         if label !=None:
             self.add(cad.shapes.Label(label, 20, [meander_to_ground/2.,30.], layer=base_layer))
+
+class interdigitated_cap(cad.core.Cell):
+    """
+    Make a cell with interdigitated cap surrounded by a dielectric with width set by 'dielectric'.  A skirt can be added by setting 'add_skirt' to True. This class also contains a function which adds a squid inside the dielectric. 
+    
+    """
+    def __init__(self,
+                 fingers = 5,
+                 finger_length = 90,
+                 gap = 5,
+                 radius = 4,
+                 plate_width = 10,
+                 plate_heigth = 315,
+                 dielectric = 30, # thickness of surrounding dielectric layer
+                 pin = 12,
+                 layer = 1,
+                 add_skirt = False,
+                 skirt_distance = 5,
+                 skirt_layer = 91,
+                 name = 'interdigitated_cap'
+                ):
+
+        super(interdigitated_cap, self).__init__(name)
+        cad.core.default_layer = layer
+        self.width = gap + finger_length + 2*plate_width + 2*dielectric
+        self.heigth = plate_heigth + 2*dielectric
+        self.fingers = fingers
+        self.dielectric = dielectric
+        self.plate_width = plate_width
+        self.gap = gap
+        self.skirt = add_skirt
+        self.skirt_layer = skirt_layer
+        self.skirt_distance = skirt_distance
+         
+        # first make outerdielectric
+        cell = cad.core.Cell('dielectric')
+        dielec_h = dielectric + plate_heigth/2. - pin/2.
+        dielec_w = 2*(dielectric + plate_width) + gap + finger_length
+        contourpoints = [ (0, dielec_h ), (0,0), (dielec_w, 0), (dielec_w, dielec_h), (dielec_w-dielectric, dielec_h),\
+                         (dielec_w-dielectric, dielectric),
+                          (dielectric, dielectric), (dielectric, dielec_h) ]
+        self.contourpoints = contourpoints
+        self.dielec_w = dielec_w
+        self.dielec_h = dielec_h
+        
+        lower_half = cad.core.Boundary( contourpoints )
+        cell.add(lower_half)
+        self.add(cell)
+        self.add( cell, origin = (dielec_w, 2*dielec_h+pin), rotation = 180) # rotate lowerhalf and place above lowerhalf
+        
+        # generate intern dielectric
+        finger_heigth = (plate_heigth - (2.*fingers-1.)*gap )/(2.*fingers) # heigth of metal fingers
+        points = [[0,0]]
+        sign = 1
+
+        for i in range(0, 4*fingers-1):
+            if i%2 == 0:
+                if (i == 0 or i == 4*fingers-2):
+                    add = [points[i][0], points[i][1] + finger_heigth + gap/2.] 
+                else:
+                    add = [points[i][0], points[i][1] + finger_heigth + gap]
+            if i%2 == 1:
+                add = [points[i][0] + sign*finger_length,  points[i][1] ]
+                sign = -1*sign
+            points.append(add)
+    
+        inside = MeanderingLine(points, turn_radius = radius, line_width = gap)  
+        self.add( inside, (dielectric+plate_width+gap/2., dielectric) )
+
+        if add_skirt == True:
+            points = [(-skirt_distance, -skirt_distance), (-skirt_distance, self.heigth + skirt_distance), \
+                      (self.width + skirt_distance, self.heigth + skirt_distance), (self.width + skirt_distance, -skirt_distance)]
+            skirt = cad.core.Boundary(points ,layer = skirt_layer)
+            self.add(skirt)
+
+    
+    def add_squid(self, thickness=2, width=20, heigth=16):
+
+        # remove lower dielectric 
+        if self.skirt == False:
+            self.remove(self.elements[0])
+        else:
+            self.remove(self.elements[1])
+        
+        # generate squid
+        squid = cad.core.Cell('squid')
+        loop = cad.core.Boundary( [(-width/2., -heigth/2.), (-width/2., heigth/2.), (-1.5, heigth/2),
+                                   (-1.5, heigth/2. + thickness/2. - 0.2), (-2.7, heigth/2. + thickness/2. -0.2),
+                                   (-2.7, heigth/2. + thickness/2. + 0.2), (-1.5, heigth/2. + thickness/2 + 0.2),
+                                   (-1.5, heigth/2. + thickness), (1.5, heigth/2. + thickness),
+                                   (1.5, heigth/2. + thickness/2. + 0.2), (2.7, heigth/2. + thickness/2. + 0.2),
+                                   (2.7, heigth/2. + thickness/2. - 0.2), (1.5, heigth/2. + thickness/2. - 0.2), 
+                                   (1.5, heigth/2.), (width/2., heigth/2.),
+                                   (width/2., -heigth/2.), (1.5, -heigth/2),
+                                   (1.5, -heigth/2. - thickness/2. + 0.2), (2.7, -heigth/2. - thickness/2. + 0.2),
+                                   (2.7, -heigth/2. - thickness/2. - 0.2), (1.5, -heigth/2. - thickness/2 - 0.2),
+                                   (1.5, -heigth/2. - thickness), (-1.5, -heigth/2. - thickness),
+                                   (-1.5, -heigth/2. - thickness/2. - 0.2), (-2.7, -heigth/2. - thickness/2. - 0.2),
+                                   (-2.7, -heigth/2. - thickness/2. + 0.2), (-1.5, -heigth/2.  -thickness/2. + 0.2), 
+                                   (-1.5, -heigth/2.)] )
+        squid.add(loop)
+        
+        # create new dielectric for lower part
+        lower_half = cad.core.Cell('lower_half')
+        delta = self.plate_width - (thickness + (width-self.gap)/2.)
+        self.delta = delta
+        contourpoints = [ (0, self.dielec_h), (0, 67.5), (self.dielectric + delta-10, 67.5), (self.dielectric + delta -10, 0),\
+                        (self.dielec_w,0), (self.dielec_w, self.dielec_h), (self.dielec_w - self.dielectric, self.dielec_h),\
+                        (self.dielec_w - self.dielectric, self.dielectric), (self.dielectric+2*thickness+width + delta, self.dielectric),\
+                        (self.dielectric + 2*thickness+width+delta, self.dielectric - 2*thickness - heigth), \
+                         (self.dielectric + delta, self.dielectric - 2*thickness - heigth),\
+                         (self.dielectric + delta, self.dielectric), (self.dielectric, self.dielectric),
+                         (self.dielectric, self.dielec_h)]
+        
+        contour = cad.core.Boundary(contourpoints)
+        lower_half.add(contour)
+        self.add(lower_half)
+        self.add(squid, (self.dielectric+thickness+width/2. + delta, self.dielectric - thickness - heigth/2.))
+        
+        if self.skirt == True:
+            self.remove(self.elements[0]) # remove old skirt
+            thickness = self.skirt_distance
+            points = [ ( self.dielectric + self.delta - 10 - thickness, 0),
+                      ( self.dielectric + self.delta - 10 - thickness, 67.5-thickness),\
+                      (-thickness, 67.5-thickness), (-thickness, self.heigth + thickness), \
+                      (self.width + thickness, self.heigth + thickness), (self.width + thickness, -thickness),\
+                      (self.dielectric + self.delta - 10 - thickness, -thickness)  ]
+            skirt = cad.core.Boundary(points ,layer = self.skirt_layer)
+            self.add(skirt)
