@@ -1,5 +1,6 @@
 import gdsCAD as cad
 import shapely
+from shapely import geometry
 import numpy as np
 import collections
 
