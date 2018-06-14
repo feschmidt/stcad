@@ -257,5 +257,5 @@ def probe_pad(position, orientation,layer = 1, taper_start_width = 100, taper_en
 	return shape
 
 
-# if __name__ == '__main__':
-# 	probe_bad([20,20],'down').show()
+if __name__ == '__main__':
+	probe_pad([20,20],'down').show()
