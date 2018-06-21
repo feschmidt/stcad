@@ -657,7 +657,7 @@ class CPW(cad.core.Cell):
   
         self.add(cell, p_0, angle)
 
-    def add_open(self,pos,length = 10):
+    def add_open(self,pos,length = 10, add_skirt = False, skirt_distance = 5, skirt_layer = 91):
         if pos == 'beginning' or pos=='b':
             p_0 = self.points[1]
             p_1 = self.points[0]
@@ -672,6 +672,11 @@ class CPW(cad.core.Cell):
         vec = vec/norm(vec)
         vec*=length
         self.add(line_polygon(p_1,p_1+vec, self.gap*2.+self.pin))
+
+        if add_skirt == True:
+            cad.core.default_layer=skirt_layer
+            self.add(line_polygon(p_1, p_1+vec, self.gap*2 + self.pin + 2*skirt_distance))
+            cad.core.default_layer = self.layer
 
             
             
@@ -811,7 +816,6 @@ class CPW(cad.core.Cell):
                 sec.append(p_before)
                 self.add(line_polygon(sec[0], sec[1],  width))
                 angles = np.linspace(angle_i,angle_i+angle_delta, 199).T *np.pi/180.
-                self.length += norm(sec[1]-sec[0])
                 self.add(arc_polygon(curve_center, turn_radius,width,\
                                     initial_angle=angle_i, final_angle=angle_i+angle_delta, number_of_points = 199))
                 sec=[p_after]
@@ -1204,6 +1208,7 @@ class interdigitated_cap(cad.core.Cell):
         self.dielectric = dielectric
         self.plate_width = plate_width
         self.gap = gap
+        self.layer = layer
         self.skirt = add_skirt
         self.skirt_layer = skirt_layer
         self.skirt_distance = skirt_distance
@@ -1250,16 +1255,58 @@ class interdigitated_cap(cad.core.Cell):
             self.add(skirt)
 
     
-    def add_squid(self, thickness=2, width=20, heigth=16):
+    def add_squid(self, thickness=2, width=20, heigth=16, rotate = False, draw_junctions = False,\
+            junction_dict = {}, angle=0):
+        """
+        This function adds a squid inside the dielectric. The junctions are drawn parallel to the short side of the capacitor. By setting 'rotate' to TRUE, the junctions are drawn parallel to the long side of the capacitor. The dictionairy is used for setting the dimension for the junctions itself. The junctions are drawn with the finger pointing to the east. This can be corrected with the angle parameter if nessecary. 
+        """
 
-        # remove lower dielectric 
-        if self.skirt == False:
+
+        # create new dielectric for lower part
+        if self.skirt == False:          # remove lower dielectric 
             self.remove(self.elements[0])
         else:
             self.remove(self.elements[1])
+
+        if rotate == True: # when the loop is rotated, it must also be moved a small distance to the left
+            heigth_old = heigth
+            heigth = heigth_old - thickness
+
+        cad.core.default_layer = self.layer
+        delta = self.plate_width - (thickness + (width-self.gap)/2.)
+        lower_half = cad.core.Cell('lower_half')
+        self.delta = delta
+        contourpoints = [ (0, self.dielec_h), (0, 67.5), (self.dielectric + delta-10, 67.5), (self.dielectric + delta -10, 0),\
+                        (self.dielec_w,0), (self.dielec_w, self.dielec_h), (self.dielec_w - self.dielectric, self.dielec_h),\
+                        (self.dielec_w - self.dielectric, self.dielectric), (self.dielectric+2*thickness+width + delta, self.dielectric),\
+                        (self.dielectric + 2*thickness+width+delta, self.dielectric - 2*thickness - heigth), \
+                         (self.dielectric + delta, self.dielectric - 2*thickness - heigth),\
+                         (self.dielectric + delta, self.dielectric), (self.dielectric, self.dielectric),
+                         (self.dielectric, self.dielec_h)]
         
-        # generate squid
+        contour = cad.core.Boundary(contourpoints)
+        lower_half.add(contour)
+        self.add(lower_half)
+
+        if self.skirt == True: # redraw skirt
+            self.remove(self.elements[0]) # remove old skirt
+            thick = self.skirt_distance
+            points = [ ( self.dielectric + self.delta - 10 - thick, 0),
+                      ( self.dielectric + self.delta - 10 - thick, 67.5-thick),\
+                      (-thick, 67.5-thick), (-thick, self.heigth + thick), \
+                      (self.width + thick, self.heigth + thick), (self.width + thick, -thick),\
+                      (self.dielectric + self.delta - 10 - thick, -thick)  ]
+            skirt = cad.core.Boundary(points ,layer = self.skirt_layer)
+            self.add(skirt)
+
+
+        # generate loop
         squid = cad.core.Cell('squid')
+        if rotate == True: # for rotation by 90 degrees, the long and short side of the loop are switched
+            width_old = width
+            heigth = width_old
+            width = heigth_old
+
         loop = cad.core.Boundary( [(-width/2., -heigth/2.), (-width/2., heigth/2.), (-1.5, heigth/2),
                                    (-1.5, heigth/2. + thickness/2. - 0.2), (-2.7, heigth/2. + thickness/2. -0.2),
                                    (-2.7, heigth/2. + thickness/2. + 0.2), (-1.5, heigth/2. + thickness/2 + 0.2),
@@ -1275,31 +1322,66 @@ class interdigitated_cap(cad.core.Cell):
                                    (-2.7, -heigth/2. - thickness/2. + 0.2), (-1.5, -heigth/2.  -thickness/2. + 0.2), 
                                    (-1.5, -heigth/2.)] )
         squid.add(loop)
-        
-        # create new dielectric for lower part
-        lower_half = cad.core.Cell('lower_half')
-        delta = self.plate_width - (thickness + (width-self.gap)/2.)
-        self.delta = delta
-        contourpoints = [ (0, self.dielec_h), (0, 67.5), (self.dielectric + delta-10, 67.5), (self.dielectric + delta -10, 0),\
-                        (self.dielec_w,0), (self.dielec_w, self.dielec_h), (self.dielec_w - self.dielectric, self.dielec_h),\
-                        (self.dielec_w - self.dielectric, self.dielectric), (self.dielectric+2*thickness+width + delta, self.dielectric),\
-                        (self.dielectric + 2*thickness+width+delta, self.dielectric - 2*thickness - heigth), \
-                         (self.dielectric + delta, self.dielectric - 2*thickness - heigth),\
-                         (self.dielectric + delta, self.dielectric), (self.dielectric, self.dielectric),
-                         (self.dielectric, self.dielec_h)]
-        
-        contour = cad.core.Boundary(contourpoints)
-        lower_half.add(contour)
-        self.add(lower_half)
-        self.add(squid, (self.dielectric+thickness+width/2. + delta, self.dielectric - thickness - heigth/2.))
-        
-        if self.skirt == True:
-            self.remove(self.elements[0]) # remove old skirt
-            thickness = self.skirt_distance
-            points = [ ( self.dielectric + self.delta - 10 - thickness, 0),
-                      ( self.dielectric + self.delta - 10 - thickness, 67.5-thickness),\
-                      (-thickness, 67.5-thickness), (-thickness, self.heigth + thickness), \
-                      (self.width + thickness, self.heigth + thickness), (self.width + thickness, -thickness),\
-                      (self.dielectric + self.delta - 10 - thickness, -thickness)  ]
-            skirt = cad.core.Boundary(points ,layer = self.skirt_layer)
-            self.add(skirt)
+       
+        if draw_junctions == True:
+            junction_gap = junction_dict.get('junction_gap', 0.12)
+            junction_finger_width = junction_dict.get('junction_finger_width', 0.1)
+            junction_finger_height = junction_dict.get('junction_finger_height', 0.2)
+            contact_pad_width = junction_dict.get('contact_pad_width', 1.0)
+            contact_pad_height = junction_dict.get('contact_pad_height', 2.0)
+            contact_pad_overlap = junction_dict.get('contact_pad_overlap', 1.8)
+            contact_distance = junction_dict.get('contact_distance', 3)
+            junction_layer = junction_dict.get('junction_layer', 5)
+    
+            junctions = cad.core.Cell('junction')
+            cad.core.default_layer = junction_layer
+
+            # derived stuff
+            junction_bottom_width = junction_finger_width + 0.500
+            finger_lead_height = 0.5*contact_distance + contact_pad_overlap \
+                - contact_pad_height - junction_finger_height -0.5*junction_gap
+            lead_bottom_height = 0.5*contact_distance + contact_pad_overlap \
+                - contact_pad_height - 0.5*junction_gap
+    
+            # upper part of the junction
+            juction_finger = cad.shapes.Rectangle(
+                (-0.5*junction_finger_width, 0),
+                (0.5*junction_finger_width, junction_finger_height))
+            juction_finger.translate((0, 0.5*junction_gap))
+            juction_finger_lead = symmetric_trapezoid(  junction_finger_width, contact_pad_width, finger_lead_height)
+            juction_finger_lead.translate( (0, 0.5*junction_gap+junction_finger_height))
+            upper_contact_pad = cad.shapes.Rectangle(
+                (-0.5*contact_pad_width, 0),
+                (0.5*contact_pad_width, contact_pad_height))
+            upper_contact_pad.translate(
+                (0, 0.5*junction_gap+junction_finger_height
+                    + finger_lead_height))
+    
+            # bottom part
+            juction_bottom = symmetric_trapezoid( junction_bottom_width, contact_pad_width, -lead_bottom_height)
+            juction_bottom.translate((0, -0.5*junction_gap))
+            lower_contact_pad = cad.shapes.Rectangle(
+                (-0.5*contact_pad_width, 0),
+                (0.5*contact_pad_width, -contact_pad_height))
+            lower_contact_pad.translate((0, -0.5*junction_gap - lead_bottom_height))
+    
+            # adding it together
+            group = cad.core.Elements(
+                (juction_finger,juction_finger_lead, upper_contact_pad,
+                 lower_contact_pad, juction_bottom))
+            junctions.add(group)
+    
+        # put everything together
+        if rotate == True:
+            width = width_old
+            heigth = heigth_old
+            self.add(squid, (self.dielectric+thickness+width/2. + delta, self.dielectric  - heigth/2.), rotation = 90)
+            if draw_junctions == True:
+                self.add(junctions,  (self.dielectric+1.5*thickness+width + delta, self.dielectric - heigth/2.), rotation = angle)
+                self.add(junctions,  (self.dielectric+ 0.5*thickness + delta, self.dielectric  -heigth/2. ), rotation = angle)
+
+        else:
+            self.add(squid, (self.dielectric+thickness+width/2. + delta, self.dielectric - thickness - heigth/2.))
+            if draw_junctions == True:
+                self.add(junctions, (self.dielectric+thickness+width/2. + delta, self.dielectric - heigth - 1.5 * thickness), rotation = 90 + angle)
+                self.add(junctions, (self.dielectric+thickness+width/2. + delta, self.dielectric - 0.5*thickness), rotation = 90 + angle)

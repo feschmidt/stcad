@@ -257,5 +257,16 @@ def probe_pad(position, orientation,layer = 1, taper_start_width = 100, taper_en
 	return shape
 
 
+def symmetric_trapezoid(bottom_width, top_width, height, layer=1):
+
+    trapezoid = cad.core.Boundary(
+        [(-0.5*bottom_width, 0),
+         (-0.5*top_width, height),
+         (0.5*top_width, height),
+         (0.5*bottom_width, 0),
+         (-0.5*bottom_width, 0),
+         ], layer=layer)
+
+    return trapezoid
 # if __name__ == '__main__':
 # 	probe_bad([20,20],'down').show()
