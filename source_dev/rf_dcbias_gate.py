@@ -1,7 +1,6 @@
 import numpy as np
 import gdsCAD as cad
-from .CPW import *
-from .testing_fillet import fillet
+from .objects import CPW
 
 class RFShuntGate():
     '''
@@ -24,8 +23,8 @@ class RFShuntGate():
         self.cell = cad.core.Cell('RF CELL') 
 
         self.layer_bottom = 1
-        self.layer_top = 2
-        self.layer_ins = 3
+        self.layer_ins = 2
+        self.layer_top = 3
         
         self.ymax = 1500
         self.nbends = 1
@@ -243,8 +242,9 @@ class RFShuntGate():
     def gen_holey_ground_mask(self):
         self.maskcell = cad.core.Cell('MASK')
 
-        self.maskcell.add(CPW(self.feedlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91))
-        self.maskcell.add(CPW(self.cpwlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91))
+        skirt = self.centerwidth+2*self.gapwidth+2*self.maskmargin
+        self.maskcell.add(CPW(self.feedlist,pin=skirt,gap=0,turn_radius=self.turnradius,layer=91,writegaps=False))
+        self.maskcell.add(CPW(self.cpwlist,pin=skirt,gap=0,turn_radius=self.turnradius,layer=91,writegaps=False))
         bbx, bby = self.shunt1.bounding_box
         self.maskcell.add(cad.shapes.Rectangle((bbx[0]-self.maskmargin,bbx[1]-self.maskmargin),(bby[0]+self.maskmargin,bby[1]+self.maskmargin),layer=91))
         jjboxmask = cad.shapes.Rectangle((self.jjboxpts[0][0]-2*self.maskmargin,self.jjboxpts[0][1]-5*self.maskmargin),
@@ -252,10 +252,10 @@ class RFShuntGate():
         self.maskcell.add(jjboxmask)
 
         if self.shuntgate:
-            self.maskcell.add(CPW(self.endcpwpts,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91))
+            self.maskcell.add(CPW(self.endcpwpts,pin=skirt,gap=0,turn_radius=self.turnradius,layer=91,writegaps=False))
             bbx, bby = self.shunt2.bounding_box
             self.maskcell.add(cad.shapes.Rectangle((bbx[0]-self.maskmargin,bbx[1]-self.maskmargin),(bby[0]+self.maskmargin,bby[1]+self.maskmargin),layer=91))
-            self.maskcell.add(CPW(self.gatecpwpts,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91))
+            self.maskcell.add(CPW(self.gatecpwpts,pin=skirt,gap=0,turn_radius=self.turnradius,layer=91,writegaps=False))
 
         return self.maskcell
 

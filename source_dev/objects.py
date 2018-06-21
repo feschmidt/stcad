@@ -549,7 +549,9 @@ class CPW(cad.core.Cell):
         pin = 4.,
         gap = 2.,
         layer = 1,
-        name=''):   
+        name='',
+        clean = True, # remove redundant points that would otherwise create unnecessary bends in the line
+        writegaps = True):   # write only centerline if False, else write gaps   
 
         super(CPW, self).__init__(name)
         cad.core.default_layer = layer
@@ -561,8 +563,24 @@ class CPW(cad.core.Cell):
         self.layer = layer
         self.turn_radius = turn_radius
 
+        if clean: 
+            idx = []
+            if len(points)>1:
+                (x0,y0) = points[0]
+                (x1,y1) = points[1]
+                for i,(x,y) in enumerate(points[2:]):
+                    t0 = np.arctan2(y1-y0,x1-x0)
+                    t1 = np.arctan2(y-y1,x-x1)
+                    if t0==t1:
+                        idx.append(i+1)
+                    x0,y0 = x1,y1
+                    x1,y1 = x,y
+            points = np.asarray([xy for i,xy in enumerate(points) if i not in idx])
         if len(points) == 2:
-            self.add(double_line_polygon(points[0],points[1],gap,pin))
+            if writegaps:
+                self.add(double_line_polygon(points[0],points[1],gap,pin))
+            else:
+                self.add(line_polygon(points[0],points[1],pin))
             self.length += norm(points[1]-points[0])
         else:
             n_last = len(points)-1
@@ -580,15 +598,25 @@ class CPW(cad.core.Cell):
                     angle_delta-=360.
 
                 sec.append(p_before)
-                self.add(double_line_polygon(sec[0],sec[1],gap,pin))
+                if writegaps:
+                    self.add(double_line_polygon(sec[0],sec[1],gap,pin))
+                else:
+                    self.add(line_polygon(sec[0],sec[1],pin))
                 angles = np.linspace(angle_i,angle_i+angle_delta, 199).T *np.pi/180.
                 self.length += norm(sec[1]-sec[0])
-                self.add(double_arc_polygon(curve_center, turn_radius,gap,pin,\
+                if writegaps:
+                    self.add(double_arc_polygon(curve_center, turn_radius,gap,pin,\
+                                    initial_angle=angle_i, final_angle=angle_i+angle_delta, number_of_points = 199))
+                else:
+                    self.add(arc_polygon(curve_center, turn_radius,pin,\
                                     initial_angle=angle_i, final_angle=angle_i+angle_delta, number_of_points = 199))
                 self.length += 2*np.pi*turn_radius*abs(angle_delta)/360.
                 sec=[p_after]
             sec.append([points[n_last][0],points[n_last][1]])
-            self.add(double_line_polygon(sec[0],sec[1],gap,pin))
+            if writegaps:
+                self.add(double_line_polygon(sec[0],sec[1],gap,pin))
+            else:
+                self.add(line_polygon(sec[0],sec[1],pin))
             self.length += norm(sec[1]-sec[0])
 
     def add_launcher(self,pos,bonding_pad_length = 400,bonding_pad_gap = 200,bonding_pad_width =500,taper_length = 500,buffer_length = 100, add_skirt=False, skirt_distance=5, skirt_layer=91):

@@ -268,5 +268,5 @@ def symmetric_trapezoid(bottom_width, top_width, height, layer=1):
          ], layer=layer)
 
     return trapezoid
-# if __name__ == '__main__':
-# 	probe_bad([20,20],'down').show()
+if __name__ == '__main__':
+ 	probe_bad([20,20],'down').show()
