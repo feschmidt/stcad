@@ -1353,7 +1353,7 @@ class interdigitated_cap(cad.core.Cell):
        
         if draw_junctions == True:
             junction_gap = junction_dict.get('junction_gap', 0.12)
-            junction_finger_width = junction_dict.get('junction_finger_width', 0.1)
+            junction_finger_width = junction_dict.get('junction_finger_width', [0.01, 0.02])
             junction_finger_height = junction_dict.get('junction_finger_height', 0.2)
             contact_pad_width = junction_dict.get('contact_pad_width', 1.0)
             contact_pad_height = junction_dict.get('contact_pad_height', 2.0)
@@ -1361,23 +1361,27 @@ class interdigitated_cap(cad.core.Cell):
             contact_distance = junction_dict.get('contact_distance', 3)
             junction_layer = junction_dict.get('junction_layer', 5)
     
-            junctions = cad.core.Cell('junction')
+            junctions = [cad.core.Cell('junction_1'), cad.core.Cell('junction_2')]
             cad.core.default_layer = junction_layer
 
             # derived stuff
-            junction_bottom_width = junction_finger_width + 0.500
+            junction_bottom_width = [junction_finger_width[0] + 0.500, junction_finger_width[1] + 0.500]
             finger_lead_height = 0.5*contact_distance + contact_pad_overlap \
                 - contact_pad_height - junction_finger_height -0.5*junction_gap
             lead_bottom_height = 0.5*contact_distance + contact_pad_overlap \
                 - contact_pad_height - 0.5*junction_gap
     
             # upper part of the junction
-            juction_finger = cad.shapes.Rectangle(
-                (-0.5*junction_finger_width, 0),
-                (0.5*junction_finger_width, junction_finger_height))
-            juction_finger.translate((0, 0.5*junction_gap))
-            juction_finger_lead = symmetric_trapezoid(  junction_finger_width, contact_pad_width, finger_lead_height)
-            juction_finger_lead.translate( (0, 0.5*junction_gap+junction_finger_height))
+            juction_fingers = [cad.shapes.Rectangle((-0.5*junction_finger_width[0], 0), (0.5*junction_finger_width[0], junction_finger_height)),\
+                               cad.shapes.Rectangle((-0.5*junction_finger_width[1], 0), (0.5*junction_finger_width[1], junction_finger_height))]
+            juction_fingers[0].translate((0, 0.5*junction_gap))
+            juction_fingers[1].translate((0, 0.5*junction_gap))
+
+            juction_finger_leads= [symmetric_trapezoid(  junction_finger_width[0], contact_pad_width, finger_lead_height),\
+                                   symmetric_trapezoid(  junction_finger_width[1], contact_pad_width, finger_lead_height)]
+            juction_finger_leads[0].translate( (0, 0.5*junction_gap+junction_finger_height))
+            juction_finger_leads[1].translate( (0, 0.5*junction_gap+junction_finger_height))
+            
             upper_contact_pad = cad.shapes.Rectangle(
                 (-0.5*contact_pad_width, 0),
                 (0.5*contact_pad_width, contact_pad_height))
@@ -1386,18 +1390,19 @@ class interdigitated_cap(cad.core.Cell):
                     + finger_lead_height))
     
             # bottom part
-            juction_bottom = symmetric_trapezoid( junction_bottom_width, contact_pad_width, -lead_bottom_height)
-            juction_bottom.translate((0, -0.5*junction_gap))
+            juction_bottom = [symmetric_trapezoid( junction_bottom_width[0], contact_pad_width, -lead_bottom_height),\
+                              symmetric_trapezoid( junction_bottom_width[1], contact_pad_width, -lead_bottom_height)]
+            juction_bottom[0].translate((0, -0.5*junction_gap))
+            juction_bottom[1].translate((0, -0.5*junction_gap))
+
             lower_contact_pad = cad.shapes.Rectangle(
                 (-0.5*contact_pad_width, 0),
                 (0.5*contact_pad_width, -contact_pad_height))
             lower_contact_pad.translate((0, -0.5*junction_gap - lead_bottom_height))
     
             # adding it together
-            group = cad.core.Elements(
-                (juction_finger,juction_finger_lead, upper_contact_pad,
-                 lower_contact_pad, juction_bottom))
-            junctions.add(group)
+            junctions[0].add(cad.core.Elements((juction_fingers[0], juction_finger_leads[0], upper_contact_pad, lower_contact_pad, juction_bottom[0])))
+            junctions[1].add(cad.core.Elements((juction_fingers[1], juction_finger_leads[1], upper_contact_pad, lower_contact_pad, juction_bottom[1])))
     
         # put everything together
         if rotate == True:
@@ -1405,11 +1410,11 @@ class interdigitated_cap(cad.core.Cell):
             heigth = heigth_old
             self.add(squid, (self.dielectric+thickness+width/2. + delta, self.dielectric  - heigth/2.), rotation = 90)
             if draw_junctions == True:
-                self.add(junctions,  (self.dielectric+1.5*thickness+width + delta, self.dielectric - heigth/2.), rotation = angle)
-                self.add(junctions,  (self.dielectric+ 0.5*thickness + delta, self.dielectric  -heigth/2. ), rotation = angle)
+                self.add(junctions[0],  (self.dielectric+1.5*thickness+width + delta, self.dielectric - heigth/2.), rotation = angle)
+                self.add(junctions[1],  (self.dielectric+ 0.5*thickness + delta, self.dielectric  -heigth/2. ), rotation = angle)
 
         else:
             self.add(squid, (self.dielectric+thickness+width/2. + delta, self.dielectric - thickness - heigth/2.))
             if draw_junctions == True:
-                self.add(junctions, (self.dielectric+thickness+width/2. + delta, self.dielectric - heigth - 1.5 * thickness), rotation = 90 + angle)
-                self.add(junctions, (self.dielectric+thickness+width/2. + delta, self.dielectric - 0.5*thickness), rotation = 90 + angle)
+                self.add(junctions[0], (self.dielectric+thickness+width/2. + delta, self.dielectric - heigth - 1.5 * thickness), rotation = 90 + angle)
+                self.add(junctions[1], (self.dielectric+thickness+width/2. + delta, self.dielectric - 0.5*thickness), rotation = 90 + angle)
