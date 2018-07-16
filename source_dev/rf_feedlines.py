@@ -25,7 +25,7 @@ class Feedline():
         for key,val in list(dict_feedline.items()):
             setattr(self,key,val)
 
-    def gen_feedline(self):
+    def gen_feedline(self,left=True,right=True):
 
         self.main_cell = cad.core.Cell('MAIN CELL')
         self.cell = cad.core.Cell('RF_FEED')
@@ -44,8 +44,10 @@ class Feedline():
 
         if self.feedline:
             self.cell.add(feedline_cpw)
-        self.cell.add(launcher1)
-        self.cell.add(launcher2)
+        if left:
+            self.cell.add(launcher1)
+        if right:
+            self.cell.add(launcher2)
 
 
 
