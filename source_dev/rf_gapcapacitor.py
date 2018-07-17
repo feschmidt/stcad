@@ -1,7 +1,7 @@
 import numpy as np
 import gdsCAD as cad
 from .objects import CPW
-from .objects import Shunt_Cap
+from .objects import interdigitated_cap
 
 class RFShunt():
     """
@@ -10,7 +10,7 @@ class RFShunt():
         - termination = "open". Other good values are "short" (to GND) or "squid"
     """
 
-    def __init__(self, name, dict_dcbias):
+    def __init__(self, name, dict_cavity):
 
         self.name = name
         self.parts = (3000,3000,2000)
@@ -25,11 +25,11 @@ class RFShunt():
 
         self.shunttype = 0
 
-        for key,val in list(dict_dcbias.items()):
+        for key,val in list(dict_cavity.items()):
             setattr(self,key,val)
 
         if self.termination=='squid':
-            self.squid = self.dict_dcbias['squid']     # (loopx,loopy,jwidth,loopwidth)
+            self.squid = self.dict_cavity['squid']     # (loopx,loopy,jwidth,loopwidth)
         else:
             self.squid = False
 
@@ -103,18 +103,24 @@ class RFShunt():
 
         self.bias_cell = cad.core.Cell('RF_DC_BIAS')
         
-        # Create feed to shunt
+        # Create feed to coupler
         self.feedlist = [[x0,y0],[x0+feedlength,y0]]
         feedpart = CPW(self.feedlist,pin=self.centerwidth,gap=self.gapwidth,layer=self.layer_bottom)
         
-        # Create shunt
+        # Create gap capacitor
         x1 = x0+feedlength
-        y1 = y0
-        shunt1 = Shunt_Cap(shunt=self.shunt)
+        y1 = y0-(30+100/2)
         
+        # self.coupler = cad.shapes.Rectangle([x1,y1-self.centerwidth/2-self.gapwidth],[x1+10,y1+self.centerwidth/2+self.gapwidth],layer=self.layer_bottom)
+        basecoupler = interdigitated_cap(fingers = 5,finger_length = 90,gap = 1,radius = 4,plate_width = 10,plate_height = 100,dielectric = 30,
+                 pin = 40,layer = 1,add_skirt = False,skirt_distance = 5,skirt_layer = 91,name = 'interdigitated_cap')
+        self.coupler = cad.core.CellReference(basecoupler).translate((int(x1),int(y1)))
+        self.bias_cell.add(self.coupler)
+
+        x1 += 30*2+90+10*2
         CPWcell = cad.core.Cell('CPW')
         
-        cpwlist = [(x1+self.shunt[0]+self.gapwidth,y0)]
+        cpwlist = [(x1,y0)]
         cpwlist.append((cpwlist[-1][0]+self.parts[0],cpwlist[-1][1]))
         cpwlist.append((cpwlist[-1][0],cpwlist[-1][1]+self.parts[1]))
         cpwlist.append((cpwlist[-1][0]-self.parts[2],cpwlist[-1][1]))
@@ -147,11 +153,8 @@ class RFShunt():
         
         '''
         # Add all elements to cell
-        # for toadd in [feedpart, self.shunt1, CPWcell]:
-            # self.bias_cell.add(toadd)
-        self.bias_cell.add(feedpart)
-        self.bias_cell.add(shunt1,origin=(x1,y1))
-        self.bias_cell.add(CPWcell)
+        for toadd in [feedpart, CPWcell]:
+            self.bias_cell.add(toadd)
 
         # Add Box (optional) or SQUID (optional) at the end
         x7 = self.cpwlist[-1][0]
@@ -178,10 +181,25 @@ class RFShunt():
 
         return self.bias_cell
 
+    def gen_shunt_full(self,pos):
+        """
+        Creates a shunt capacitor from center conductor to ground
+        """
+        x0 = pos[0]
+        y0 = pos[1]
+
+        shuntcell = cad.core.Cell('SHUNT')
+        shuntbase = self.gen_shunt_base((x0,y0))
+        shunttop = self.gen_shunt_top((x0+self.gapwidth/2+self.shunt[0]/2-self.shunt[4]/2,y0-self.shunt[5]/2),shunttype=self.shunttype)
+        shuntins = self.gen_shunt_ins((x0+self.gapwidth/2-(self.shunt[2]-self.shunt[0])/2,y0-self.shunt[3]/2))
+
+        [shuntcell.add(toadd) for toadd in [shuntbase, shuntins, shunttop]]
+        return shuntcell
+
 
     def gen_squid_base(self,pos,boxdim):
         """
-        Method to add SQUID at the end of the resonator. Uses all input variables specified in dict_dcbias
+        Method to add SQUID at the end of the resonator. Uses all input variables specified in dict_cavity
         pos: x0, y0
         """
 
@@ -241,7 +259,9 @@ class RFShunt():
         skirt = self.centerwidth+2*self.gapwidth+2*self.maskmargin
         self.maskcell.add(CPW(self.feedlist,pin=skirt,gap=0,turn_radius=self.turnradius,layer=91,writegaps=False))
         self.maskcell.add(CPW(self.cpwlist,pin=skirt,gap=0,turn_radius=self.turnradius,layer=91,writegaps=False))
-        
+        # bbx, bby = self.shunt1.bounding_box
+        # self.maskcell.add(cad.shapes.Rectangle((bbx[0]-self.maskmargin,bbx[1]-self.maskmargin),(bby[0]+self.maskmargin,bby[1]+self.maskmargin),layer=91))
+
         boxmask = cad.shapes.Rectangle((self.endboxpoints[0][0]-2*self.maskmargin,self.endboxpoints[0][1]-self.maskmargin),
             (self.endboxpoints[1][0]+2*self.maskmargin,self.endboxpoints[1][1]+self.maskmargin),layer=91)
 

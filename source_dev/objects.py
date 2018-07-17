@@ -1214,7 +1214,7 @@ class interdigitated_cap(cad.core.Cell):
                  gap = 5,
                  radius = 4,
                  plate_width = 10,
-                 plate_heigth = 315,
+                 plate_height = 315,
                  dielectric = 30, # thickness of surrounding dielectric layer
                  pin = 12,
                  layer = 1,
@@ -1227,7 +1227,7 @@ class interdigitated_cap(cad.core.Cell):
         super(interdigitated_cap, self).__init__(name)
         cad.core.default_layer = layer
         self.width = gap + finger_length + 2*plate_width + 2*dielectric
-        self.heigth = plate_heigth + 2*dielectric
+        self.height = plate_height + 2*dielectric
         self.fingers = fingers
         self.dielectric = dielectric
         self.plate_width = plate_width
@@ -1238,7 +1238,7 @@ class interdigitated_cap(cad.core.Cell):
          
         # first make outerdielectric
         cell = cad.core.Cell('dielectric')
-        dielec_h = dielectric + plate_heigth/2. - pin/2.
+        dielec_h = dielectric + plate_height/2. - pin/2.
         dielec_w = 2*(dielectric + plate_width) + gap + finger_length
         contourpoints = [ (0, dielec_h ), (0,0), (dielec_w, 0), (dielec_w, dielec_h), (dielec_w-dielectric, dielec_h),\
                          (dielec_w-dielectric, dielectric),
@@ -1253,16 +1253,16 @@ class interdigitated_cap(cad.core.Cell):
         self.add( cell, origin = (dielec_w, 2*dielec_h+pin), rotation = 180) # rotate lowerhalf and place above lowerhalf
         
         # generate intern dielectric
-        finger_heigth = (plate_heigth - (2.*fingers-1.)*gap )/(2.*fingers) # heigth of metal fingers
+        finger_height = (plate_height - (2.*fingers-1.)*gap )/(2.*fingers) # height of metal fingers
         points = [[0,0]]
         sign = 1
 
         for i in range(0, 4*fingers-1):
             if i%2 == 0:
                 if (i == 0 or i == 4*fingers-2):
-                    add = [points[i][0], points[i][1] + finger_heigth + gap/2.] 
+                    add = [points[i][0], points[i][1] + finger_height + gap/2.] 
                 else:
-                    add = [points[i][0], points[i][1] + finger_heigth + gap]
+                    add = [points[i][0], points[i][1] + finger_height + gap]
             if i%2 == 1:
                 add = [points[i][0] + sign*finger_length,  points[i][1] ]
                 sign = -1*sign
@@ -1272,13 +1272,13 @@ class interdigitated_cap(cad.core.Cell):
         self.add( inside, (dielectric+plate_width+gap/2., dielectric) )
 
         if add_skirt == True:
-            points = [(-skirt_distance, -skirt_distance), (-skirt_distance, self.heigth + skirt_distance), \
-                      (self.width + skirt_distance, self.heigth + skirt_distance), (self.width + skirt_distance, -skirt_distance)]
+            points = [(-skirt_distance, -skirt_distance), (-skirt_distance, self.height + skirt_distance), \
+                      (self.width + skirt_distance, self.height + skirt_distance), (self.width + skirt_distance, -skirt_distance)]
             skirt = cad.core.Boundary(points ,layer = skirt_layer)
             self.add(skirt)
 
     
-    def add_squid(self, thickness=2, width=20, heigth=16):
+    def add_squid(self, thickness=2, width=20, height=16):
 
         # remove lower dielectric 
         if self.skirt == False:
@@ -1288,20 +1288,20 @@ class interdigitated_cap(cad.core.Cell):
         
         # generate squid
         squid = cad.core.Cell('squid')
-        loop = cad.core.Boundary( [(-width/2., -heigth/2.), (-width/2., heigth/2.), (-1.5, heigth/2),
-                                   (-1.5, heigth/2. + thickness/2. - 0.2), (-2.7, heigth/2. + thickness/2. -0.2),
-                                   (-2.7, heigth/2. + thickness/2. + 0.2), (-1.5, heigth/2. + thickness/2 + 0.2),
-                                   (-1.5, heigth/2. + thickness), (1.5, heigth/2. + thickness),
-                                   (1.5, heigth/2. + thickness/2. + 0.2), (2.7, heigth/2. + thickness/2. + 0.2),
-                                   (2.7, heigth/2. + thickness/2. - 0.2), (1.5, heigth/2. + thickness/2. - 0.2), 
-                                   (1.5, heigth/2.), (width/2., heigth/2.),
-                                   (width/2., -heigth/2.), (1.5, -heigth/2),
-                                   (1.5, -heigth/2. - thickness/2. + 0.2), (2.7, -heigth/2. - thickness/2. + 0.2),
-                                   (2.7, -heigth/2. - thickness/2. - 0.2), (1.5, -heigth/2. - thickness/2 - 0.2),
-                                   (1.5, -heigth/2. - thickness), (-1.5, -heigth/2. - thickness),
-                                   (-1.5, -heigth/2. - thickness/2. - 0.2), (-2.7, -heigth/2. - thickness/2. - 0.2),
-                                   (-2.7, -heigth/2. - thickness/2. + 0.2), (-1.5, -heigth/2.  -thickness/2. + 0.2), 
-                                   (-1.5, -heigth/2.)] )
+        loop = cad.core.Boundary( [(-width/2., -height/2.), (-width/2., height/2.), (-1.5, height/2),
+                                   (-1.5, height/2. + thickness/2. - 0.2), (-2.7, height/2. + thickness/2. -0.2),
+                                   (-2.7, height/2. + thickness/2. + 0.2), (-1.5, height/2. + thickness/2 + 0.2),
+                                   (-1.5, height/2. + thickness), (1.5, height/2. + thickness),
+                                   (1.5, height/2. + thickness/2. + 0.2), (2.7, height/2. + thickness/2. + 0.2),
+                                   (2.7, height/2. + thickness/2. - 0.2), (1.5, height/2. + thickness/2. - 0.2), 
+                                   (1.5, height/2.), (width/2., height/2.),
+                                   (width/2., -height/2.), (1.5, -height/2),
+                                   (1.5, -height/2. - thickness/2. + 0.2), (2.7, -height/2. - thickness/2. + 0.2),
+                                   (2.7, -height/2. - thickness/2. - 0.2), (1.5, -height/2. - thickness/2 - 0.2),
+                                   (1.5, -height/2. - thickness), (-1.5, -height/2. - thickness),
+                                   (-1.5, -height/2. - thickness/2. - 0.2), (-2.7, -height/2. - thickness/2. - 0.2),
+                                   (-2.7, -height/2. - thickness/2. + 0.2), (-1.5, -height/2.  -thickness/2. + 0.2), 
+                                   (-1.5, -height/2.)] )
         squid.add(loop)
         
         # create new dielectric for lower part
@@ -1311,23 +1311,112 @@ class interdigitated_cap(cad.core.Cell):
         contourpoints = [ (0, self.dielec_h), (0, 67.5), (self.dielectric + delta-10, 67.5), (self.dielectric + delta -10, 0),\
                         (self.dielec_w,0), (self.dielec_w, self.dielec_h), (self.dielec_w - self.dielectric, self.dielec_h),\
                         (self.dielec_w - self.dielectric, self.dielectric), (self.dielectric+2*thickness+width + delta, self.dielectric),\
-                        (self.dielectric + 2*thickness+width+delta, self.dielectric - 2*thickness - heigth), \
-                         (self.dielectric + delta, self.dielectric - 2*thickness - heigth),\
+                        (self.dielectric + 2*thickness+width+delta, self.dielectric - 2*thickness - height), \
+                         (self.dielectric + delta, self.dielectric - 2*thickness - height),\
                          (self.dielectric + delta, self.dielectric), (self.dielectric, self.dielectric),
                          (self.dielectric, self.dielec_h)]
         
         contour = cad.core.Boundary(contourpoints)
         lower_half.add(contour)
         self.add(lower_half)
-        self.add(squid, (self.dielectric+thickness+width/2. + delta, self.dielectric - thickness - heigth/2.))
+        self.add(squid, (self.dielectric+thickness+width/2. + delta, self.dielectric - thickness - height/2.))
         
         if self.skirt == True:
             self.remove(self.elements[0]) # remove old skirt
             thickness = self.skirt_distance
             points = [ ( self.dielectric + self.delta - 10 - thickness, 0),
                       ( self.dielectric + self.delta - 10 - thickness, 67.5-thickness),\
-                      (-thickness, 67.5-thickness), (-thickness, self.heigth + thickness), \
-                      (self.width + thickness, self.heigth + thickness), (self.width + thickness, -thickness),\
+                      (-thickness, 67.5-thickness), (-thickness, self.height + thickness), \
+                      (self.width + thickness, self.height + thickness), (self.width + thickness, -thickness),\
                       (self.dielectric + self.delta - 10 - thickness, -thickness)  ]
             skirt = cad.core.Boundary(points ,layer = self.skirt_layer)
             self.add(skirt)
+
+
+class Shunt_Cap(cad.core.Cell):
+    """
+    Make a cell with shunt capacitor.  A skirt can be added by setting 'add_skirt' to True.
+    """
+    def __init__(self,
+                centerwidth=12,gapwidth=5,shunt=(208,520,268+10,841+10,268,841),layer_bottom=1,layer_ins=2,layer_top=3,
+                add_skirt=True,skirt_distance=5,layer_skirt=91,
+                name = 'Shunt_Cap',
+                pos=(0,0)
+                ):
+
+        super(Shunt_Cap, self).__init__(name)
+        self.centerwidth=centerwidth
+        self.gapwidth=gapwidth
+        self.shunt=shunt
+        self.layer_bottom=layer_bottom
+        self.layer_ins=layer_ins
+        self.layer_top=layer_top
+
+        x0,y0=pos[0],pos[1]
+        shuntbase = self.gen_shunt_base((x0,y0))
+        shuntins = self.gen_shunt_ins((x0+self.gapwidth/2-(self.shunt[2]-self.shunt[0])/2,y0-self.shunt[3]/2))
+        shunttop = self.gen_shunt_top((x0+self.gapwidth/2+self.shunt[0]/2-self.shunt[4]/2,y0-self.shunt[5]/2))
+        
+        [self.add(toadd) for toadd in [shuntbase, shuntins, shunttop]]
+
+        if add_skirt==True:
+            bbx, bby = self.bounding_box
+            self.add(cad.shapes.Rectangle((bbx[0]-skirt_distance,bbx[1]-skirt_distance),(bby[0]+skirt_distance,bby[1]+skirt_distance),layer=layer_skirt))
+        
+
+    def gen_shunt_base(self,pos):
+        """
+        Base layer for shunt
+        """
+        x0 = pos[0]
+        y0 = pos[1]
+
+        shuntbase = cad.core.Cell('shuntbase')
+        shuntpoints = [(x0,y0+self.centerwidth/2.),(x0,y0+self.shunt[1]/2.+self.gapwidth/2.),
+                    (x0+self.shunt[0]+self.gapwidth,y0+self.shunt[1]/2.+self.gapwidth/2.),(x0+self.shunt[0]+self.gapwidth,y0+self.centerwidth/2.)]
+        shunt1 = cad.core.Path(shuntpoints,self.gapwidth,layer=self.layer_bottom)
+        shunt11 = cad.utils.reflect(shunt1,'x',origin=(0,y0))
+        shuntbase.add(shunt1)
+        shuntbase.add(shunt11)
+        return shuntbase
+
+    def gen_shunt_ins(self,pos):
+        """
+        Returns insulating slab for shunt capacitors
+        """
+        x0 = pos[0]
+        y0 = pos[1]
+
+        shuntins = cad.core.Cell('shuntins')
+        shuntpoints = [(x0,y0),
+                    (x0+self.shunt[2],y0+self.shunt[3])]
+        shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_ins)
+        shuntins.add(shunt)
+        # this is for covering the gaps with additional dielectric to prevent shorting
+        # 02-07-2018
+        y0+=(self.shunt[3]/2+self.gapwidth/2)
+        x0+=32.5
+        dielgaps = [(x0-32,y0+self.centerwidth/2.),(x0,y0+self.centerwidth/2.),(x0,y0+self.shunt[1]/2),
+                    (x0+self.shunt[0]+self.gapwidth,y0+self.shunt[1]/2),(x0+self.shunt[0]+self.gapwidth,y0+self.centerwidth/2.),
+                    (x0+self.shunt[0]+self.gapwidth+32,y0+self.centerwidth/2.)]
+        shunt1 = cad.core.Path(dielgaps,self.gapwidth+2,layer=5)
+        shunt11 = cad.utils.reflect(shunt1,'x',origin=(0,y0-self.gapwidth/2))
+        shuntins.add(shunt1)
+        shuntins.add(shunt11)
+        return shuntins
+
+    def gen_shunt_top(self,pos):
+        """
+        Returns top plate for shunt capacitors
+        """
+        x0 = pos[0]
+        y0 = pos[1]
+
+        shunttop = cad.core.Cell('shunttop')
+        shuntpoints = [(x0,y0),
+                    (x0+self.shunt[4],y0+self.shunt[5])]
+        shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_top)
+        
+        shunttop.add(shunt)
+        
+        return shunttop
