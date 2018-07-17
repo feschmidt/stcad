@@ -58,9 +58,6 @@ class RFShuntGate():
         # Generate first cavity
         rfcell = cad.core.Cell('RESONATOR')
         resonator = self.gen_cavity_new(x0,y0,feedlength,self.holedim,self.shuntgate)
-        if mask:
-            rfmask = self.gen_holey_ground_mask()
-            rfcell.add(rfmask)
         rfcell.add(resonator)
 
         self.cell.add(rfcell)
@@ -86,9 +83,6 @@ class RFShuntGate():
         rfcell = cad.core.Cell('RESONATOR')
         resonator = self.gen_cavity_new(x0,y0,feedlength,self.holedim,self.shuntgate,gJJ=gJJ)
         rfcell.add(resonator)
-        if mask:
-            rfmask = self.gen_holey_ground_mask()
-            rfcell.add(rfmask)
 
         if loc == 'top':
             self.cell.add(rfcell)
@@ -109,7 +103,8 @@ class RFShuntGate():
         
         # Create feed to shunt
         self.feedlist = [[x0,y0],[x0+feedlength,y0]]
-        part1 = CPW(self.feedlist, layer=self.layer_bottom, pin=self.centerwidth,gap=self.gapwidth)        
+        part1 = CPW(self.feedlist, layer=self.layer_bottom, pin=self.centerwidth,gap=self.gapwidth)
+        part1.add_mask(width=self.centerwidth+2*self.gapwidth+2*self.maskmargin,layer=91)  
         
         # Create shunt
         x1 = x0+feedlength
@@ -134,11 +129,11 @@ class RFShuntGate():
             # Add hole for gJJ
             gJJ_box = cad.core.Cell('JJ BOX')
             self.jjboxpts = [(holex0, holey0-hole[1]/2),(holex0+hole[0],holey0+hole[1]/2)]
-            gJJ_box.add(cad.shapes.Rectangle(self.jjboxpts[0],self.jjboxpts[1]))
+            gJJ_box.add(cad.shapes.Rectangle(self.jjboxpts[0],self.jjboxpts[1],layer=self.layer_bottom))
             # Add marker for gJJ
             if holemarker == True:
-                box1=cad.shapes.Rectangle((holex0+5,holey0+hole[1]/2+5),(holex0+10,holey0+hole[1]/2+10))
-                box2=cad.shapes.Rectangle((holex0+10,holey0+hole[1]/2),(holex0+15,holey0+hole[1]/2+5))
+                box1=cad.shapes.Rectangle((holex0+5,holey0+hole[1]/2+5),(holex0+10,holey0+hole[1]/2+10),layer=self.layer_bottom)
+                box2=cad.shapes.Rectangle((holex0+10,holey0+hole[1]/2),(holex0+15,holey0+hole[1]/2+5),layer=self.layer_bottom)
                 gJJ_box.add(box1)
                 gJJ_box.add(box2)
                 gJJ_box.add(cad.utils.reflect(box1,'x',origin=(holex0+hole[0]/2,holey0)))
@@ -147,12 +142,17 @@ class RFShuntGate():
                 gJJ_box.add(cad.utils.reflect(box2,'y',origin=(holex0+hole[0]/2,holey0)))
                 gJJ_box.add(cad.utils.rotate(box1,180,center=(holex0+hole[0]/2,holey0)))
                 gJJ_box.add(cad.utils.rotate(box2,180,center=(holex0+hole[0]/2,holey0)))
+            jjboxmask = cad.shapes.Rectangle((self.jjboxpts[0][0]-2*self.maskmargin,self.jjboxpts[0][1]-5*self.maskmargin),
+            (self.jjboxpts[1][0]+2*self.maskmargin,self.jjboxpts[1][1]+5*self.maskmargin),layer=91)
+            gJJ_box.add(jjboxmask)
+
         endhole = holex0+hole[0]
 
         if shuntgate:
             # Connect hole to shunt
             self.gatecpwpts = [[endhole,y0],[endhole+self.gatestub,y0]]
-            gatecpw = CPW(self.gatecpwpts,gap=self.gapwidth,pin=self.centerwidth,layer=1)
+            gatecpw = CPW(self.gatecpwpts,gap=self.gapwidth,pin=self.centerwidth,layer=self.layer_bottom)
+            gatecpw.add_mask(width=self.centerwidth+2*self.gapwidth+2*self.maskmargin,layer=91)
             
             # Create second shunt
             x1 = self.gatecpwpts[-1][0]
@@ -164,6 +164,7 @@ class RFShuntGate():
             y2 = y0
             self.endcpwpts = [[x2,y2],[-self.position[0],y2]]#[x2+self.feedlength,y2]]
             endcpw = CPW(self.endcpwpts,gap=self.gapwidth,pin=self.centerwidth,layer=1)
+            endcpw.add_mask(width=self.centerwidth+2*self.gapwidth+2*self.maskmargin,layer=91)
 
 
         for toadd in [part1,self.shunt1,part2]:
@@ -229,6 +230,7 @@ class RFShuntGate():
 
             self.cpwlist = cpwlist
             cpw = CPW(self.cpwlist,pin=pin,gap=gap,turn_radius=turnradius,layer=layer)
+            cpw.add_mask(width=self.centerwidth+2*self.gapwidth+2*self.maskmargin,layer=91)
 
         print('Input length:', length)
         print('Available xspace:', xspace)
@@ -238,23 +240,6 @@ class RFShuntGate():
         CPWcell.add(cpw)
 
         return CPWcell
-
-
-    def gen_holey_ground_mask(self):
-        self.maskcell = cad.core.Cell('MASK')
-
-        skirt = self.centerwidth+2*self.gapwidth+2*self.maskmargin
-        self.maskcell.add(CPW(self.feedlist,pin=skirt,gap=0,turn_radius=self.turnradius,layer=91,writegaps=False))
-        self.maskcell.add(CPW(self.cpwlist,pin=skirt,gap=0,turn_radius=self.turnradius,layer=91,writegaps=False))
-        jjboxmask = cad.shapes.Rectangle((self.jjboxpts[0][0]-2*self.maskmargin,self.jjboxpts[0][1]-5*self.maskmargin),
-            (self.jjboxpts[1][0]+2*self.maskmargin,self.jjboxpts[1][1]+5*self.maskmargin),layer=91)
-        self.maskcell.add(jjboxmask)
-
-        if self.shuntgate:
-            self.maskcell.add(CPW(self.endcpwpts,pin=skirt,gap=0,turn_radius=self.turnradius,layer=91,writegaps=False))
-            self.maskcell.add(CPW(self.gatecpwpts,pin=skirt,gap=0,turn_radius=self.turnradius,layer=91,writegaps=False))
-
-        return self.maskcell
 
     
     def gen_label(self,pos):

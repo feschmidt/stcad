@@ -49,9 +49,6 @@ class RFShunt():
         rfcell = cad.core.Cell('RESONATOR')
         resonator = self.gen_cavity(x0,y0,feedlength,self.squid)
         rfcell.add(resonator)
-        if mask:
-            rfmask = self.gen_holey_ground_mask()
-            rfcell.add(rfmask)
 
         # Add the other three as copies of the first one
         rfcell.add(cad.core.CellReference(rfcell,origin=(0,0),x_reflection=True))
@@ -63,7 +60,7 @@ class RFShunt():
         return self.cell
 
 
-    def gen_partial(self, loc, mask=True):
+    def gen_partial(self, loc, mask=False):
         """
         Generate one DC bias cavity with specified loc(ation)
         values for loc: sw, se, ne, nw
@@ -78,9 +75,6 @@ class RFShunt():
         rfcell = cad.core.Cell('RESONATOR')
         resonator = self.gen_cavity(x0,y0,feedlength,self.squid)
         rfcell.add(resonator)
-        if mask:
-            rfmask = self.gen_holey_ground_mask()
-            rfcell.add(rfmask)
 
         if loc == 'sw':
             self.cell.add(rfcell)
@@ -106,6 +100,7 @@ class RFShunt():
         # Create feed to shunt
         self.feedlist = [[x0,y0],[x0+feedlength,y0]]
         feedpart = CPW(self.feedlist,pin=self.centerwidth,gap=self.gapwidth,layer=self.layer_bottom)
+        feedpart.add_mask(width=self.centerwidth+2*self.gapwidth+2*self.maskmargin,layer=91)
         
         # Create shunt
         x1 = x0+feedlength
@@ -121,6 +116,7 @@ class RFShunt():
         
         self.cpwlist = cpwlist
         cpw = CPW(self.cpwlist,pin=self.centerwidth,gap=self.gapwidth,turn_radius=self.turnradius,layer=self.layer_bottom)
+        cpw.add_mask(width=self.centerwidth+2*self.gapwidth+2*self.maskmargin,layer=91)
         self.cpwlength = cpw.length
         ### Not yet implemented:
         # print('Input length:', self.length)
@@ -162,8 +158,11 @@ class RFShunt():
             print("Termination: Short to ground")
         elif self.termination == "open":
             self.endboxpoints=[(x7-self.boxdim[0],y7-self.boxdim[1]/2.),(x7,y7+self.boxdim[1]/2.)]
-            endbox = cad.shapes.Rectangle(self.endboxpoints[0],self.endboxpoints[1])
+            endbox = cad.shapes.Rectangle(self.endboxpoints[0],self.endboxpoints[1],layer=self.layer_bottom)
+            boxmask = cad.shapes.Rectangle((self.endboxpoints[0][0]-2*self.maskmargin,self.endboxpoints[0][1]-self.maskmargin),
+            (self.endboxpoints[1][0]+2*self.maskmargin,self.endboxpoints[1][1]+self.maskmargin),layer=91)
             self.bias_cell.add(endbox)
+            self.bias_cell.add(boxmask)
             print("Termination: Open to ground")
         elif self.termination == "squid":
             squid1 = self.gen_squid_base((x6-part4l,y6+self.gapwidth),(100,40))
@@ -233,21 +232,6 @@ class RFShunt():
         squidcell.add(squidtop1)
         squidcell.add(squidtop11)
         return squidcell
-
-
-    def gen_holey_ground_mask(self):
-        self.maskcell = cad.core.Cell('MASK')
-
-        skirt = self.centerwidth+2*self.gapwidth+2*self.maskmargin
-        self.maskcell.add(CPW(self.feedlist,pin=skirt,gap=0,turn_radius=self.turnradius,layer=91,writegaps=False))
-        self.maskcell.add(CPW(self.cpwlist,pin=skirt,gap=0,turn_radius=self.turnradius,layer=91,writegaps=False))
-        
-        boxmask = cad.shapes.Rectangle((self.endboxpoints[0][0]-2*self.maskmargin,self.endboxpoints[0][1]-self.maskmargin),
-            (self.endboxpoints[1][0]+2*self.maskmargin,self.endboxpoints[1][1]+self.maskmargin),layer=91)
-
-        self.maskcell.add(boxmask)
-
-        return self.maskcell
 
     def gen_label(self,pos):
         """
