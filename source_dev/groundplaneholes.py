@@ -1,6 +1,6 @@
 import numpy as np
 import gdsCAD as cad
-from .CPW import *
+from .objects import CPW
 from .testing_fillet import fillet
 
 class GroundPlaneHoles():
