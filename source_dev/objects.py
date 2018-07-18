@@ -620,7 +620,15 @@ class CPW(cad.core.Cell):
                 self.add(line_polygon(sec[0],sec[1],pin))
             self.length += norm(sec[1]-sec[0])
 
-    def add_launcher(self,pos,bonding_pad_length = 400,bonding_pad_gap = 200,bonding_pad_width =500,taper_length = 500,buffer_length = 100, add_skirt=False, skirt_distance=5, skirt_layer=91):
+    def add_launcher(self, pos,
+        bonding_pad_length = 400,
+        bonding_pad_gap = 200,
+        bonding_pad_width = 500,
+        taper_length = 500,
+        buffer_length = 100,
+        add_skirt=False,
+        skirt_distance=5,
+        skirt_layer=91):
 
         if pos == 'beginning' or pos=='b':
             p_0 = self.points[0]
@@ -629,7 +637,7 @@ class CPW(cad.core.Cell):
             p_0 = self.points[-1]
             p_1 = self.points[-2]
         else:
-            raise ValueError("First argumnet should be either 'beginning' or 'b' or 'end' or 'e'")
+            raise ValueError("First argument should be either 'b(eginning)' or 'e(nd)'.")
 
         cad.core.default_layer=self.layer
         
@@ -650,7 +658,6 @@ class CPW(cad.core.Cell):
 
         launchpoints_top = [[-buffer_length-taper_length-bonding_pad_length, 0 ],\
                 [-buffer_length-taper_length-bonding_pad_length, bonding_pad_gap + bonding_pad_width/2. ],\
-                [-buffer_length-taper_length-bonding_pad_length, bonding_pad_gap + bonding_pad_width/2. ],\
                 [-taper_length, bonding_pad_gap + bonding_pad_width/2. ],\
                 [0, self.gap + self.pin/2. ],\
                 [0, self.pin/2. ],\
@@ -665,8 +672,8 @@ class CPW(cad.core.Cell):
 
       
         if add_skirt == True:   
-            skirtpoints = [[ -buffer_length-taper_length-bonding_pad_length, -skirt_distance - bonding_pad_gap - bonding_pad_width/2. ],\
-              [-buffer_length-taper_length-bonding_pad_length,skirt_distance + bonding_pad_gap + bonding_pad_width/2. ],\
+            skirtpoints = [[ -skirt_distance-buffer_length-taper_length-bonding_pad_length, -skirt_distance - bonding_pad_gap - bonding_pad_width/2. ],\
+              [-skirt_distance-buffer_length-taper_length-bonding_pad_length,skirt_distance + bonding_pad_gap + bonding_pad_width/2. ],\
               [-taper_length, skirt_distance+bonding_pad_gap + bonding_pad_width/2. ],\
               [0, self.gap + self.pin/2. + skirt_distance ],\
               [0, -self.gap - self.pin/2. - skirt_distance ],\
@@ -1420,7 +1427,7 @@ class Shunt_Cap(cad.core.Cell):
     Make a cell with shunt capacitor.  A skirt can be added by setting 'add_skirt' to True.
     """
     def __init__(self,
-                centerwidth=12,gapwidth=5,shunt=(208,520,268+10,841+10,268,841),layer_bottom=1,layer_ins=2,layer_top=3,
+                centerwidth=12,gapwidth=5,shunt=(208,520,268+10,841+10,268,841),layer_bottom=1,layer_ins=2,layer_top=3,layer_fill=5,fill_gaps=True,filldx=32.5,
                 add_skirt=True,skirt_distance=5,layer_skirt=91,
                 name = 'Shunt_Cap',
                 pos=(0,0)
@@ -1433,11 +1440,12 @@ class Shunt_Cap(cad.core.Cell):
         self.layer_bottom=layer_bottom
         self.layer_ins=layer_ins
         self.layer_top=layer_top
+        self.layer_fill = layer_fill
 
         x0,y0=pos[0],pos[1]
         shuntbase = self.gen_shunt_base((x0,y0))
-        shuntins = self.gen_shunt_ins((x0+self.gapwidth/2-(self.shunt[2]-self.shunt[0])/2,y0-self.shunt[3]/2))
-        shunttop = self.gen_shunt_top((x0+self.gapwidth/2+self.shunt[0]/2-self.shunt[4]/2,y0-self.shunt[5]/2))
+        shuntins = self.gen_shunt_ins((x0,y0),fill_gaps=fill_gaps,filldx=filldx)
+        shunttop = self.gen_shunt_top((x0,y0))
         
         [self.add(toadd) for toadd in [shuntbase, shuntins, shunttop]]
 
@@ -1462,12 +1470,12 @@ class Shunt_Cap(cad.core.Cell):
         shuntbase.add(shunt11)
         return shuntbase
 
-    def gen_shunt_ins(self,pos):
+    def gen_shunt_ins(self,pos,fill_gaps=True,filldx=33):
         """
         Returns insulating slab for shunt capacitors
         """
-        x0 = pos[0]
-        y0 = pos[1]
+        x0 = pos[0]+self.gapwidth/2-(self.shunt[2]-self.shunt[0])/2
+        y0 = pos[1]-self.shunt[3]/2
 
         shuntins = cad.core.Cell('shuntins')
         shuntpoints = [(x0,y0),
@@ -1476,23 +1484,23 @@ class Shunt_Cap(cad.core.Cell):
         shuntins.add(shunt)
         # this is for covering the gaps with additional dielectric to prevent shorting
         # 02-07-2018
-        y0+=(self.shunt[3]/2+self.gapwidth/2)
-        x0+=32.5
-        dielgaps = [(x0-32,y0+self.centerwidth/2.),(x0,y0+self.centerwidth/2.),(x0,y0+self.shunt[1]/2),
-                    (x0+self.shunt[0]+self.gapwidth,y0+self.shunt[1]/2),(x0+self.shunt[0]+self.gapwidth,y0+self.centerwidth/2.),
-                    (x0+self.shunt[0]+self.gapwidth+32,y0+self.centerwidth/2.)]
-        shunt1 = cad.core.Path(dielgaps,self.gapwidth+2,layer=5)
-        shunt11 = cad.utils.reflect(shunt1,'x',origin=(0,y0-self.gapwidth/2))
-        shuntins.add(shunt1)
-        shuntins.add(shunt11)
+        if fill_gaps:
+            y0 = pos[1]+self.gapwidth/2
+            dielgaps = [(x0,y0+self.centerwidth/2.),(pos[0],y0+self.centerwidth/2.),(pos[0],y0+self.shunt[1]/2),
+                        (pos[0]+self.shunt[0]+self.gapwidth,y0+self.shunt[1]/2),(pos[0]+self.shunt[0]+self.gapwidth,y0+self.centerwidth/2.),
+                        (pos[0]+self.shunt[0]+self.gapwidth+(pos[0]-x0),y0+self.centerwidth/2.)]
+            shunt1 = cad.core.Path(dielgaps,self.gapwidth+2,layer=self.layer_fill)
+            shunt11 = cad.utils.reflect(shunt1,'x',origin=(0,y0-self.gapwidth/2))
+            shuntins.add(shunt1)
+            shuntins.add(shunt11)
         return shuntins
 
     def gen_shunt_top(self,pos):
         """
         Returns top plate for shunt capacitors
         """
-        x0 = pos[0]
-        y0 = pos[1]
+        x0 = pos[0]+self.gapwidth/2+self.shunt[0]/2-self.shunt[4]/2
+        y0 = pos[1]-self.shunt[5]/2
 
         shunttop = cad.core.Cell('shunttop')
         shuntpoints = [(x0,y0),
