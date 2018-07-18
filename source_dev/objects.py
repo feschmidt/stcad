@@ -1427,7 +1427,7 @@ class Shunt_Cap(cad.core.Cell):
     Make a cell with shunt capacitor.  A skirt can be added by setting 'add_skirt' to True.
     """
     def __init__(self,
-                centerwidth=12,gapwidth=5,shunt=(208,520,268+10,841+10,268,841),layer_bottom=1,layer_ins=2,layer_top=3,layer_fill=5,fill_gaps=True,filldx=32.5,
+                centerwidth=12,gapwidth=5,shunt=(208,520,268+10,841+10,268,841),layer_bottom=1,layer_ins=2,layer_top=3,layer_fill=5,fill_gaps=True,
                 add_skirt=True,skirt_distance=5,layer_skirt=91,
                 name = 'Shunt_Cap',
                 pos=(0,0)
@@ -1444,7 +1444,7 @@ class Shunt_Cap(cad.core.Cell):
 
         x0,y0=pos[0],pos[1]
         shuntbase = self.gen_shunt_base((x0,y0))
-        shuntins = self.gen_shunt_ins((x0,y0),fill_gaps=fill_gaps,filldx=filldx)
+        shuntins = self.gen_shunt_ins((x0,y0),fill_gaps=fill_gaps)
         shunttop = self.gen_shunt_top((x0,y0))
         
         [self.add(toadd) for toadd in [shuntbase, shuntins, shunttop]]
@@ -1470,7 +1470,7 @@ class Shunt_Cap(cad.core.Cell):
         shuntbase.add(shunt11)
         return shuntbase
 
-    def gen_shunt_ins(self,pos,fill_gaps=True,filldx=33):
+    def gen_shunt_ins(self,pos,fill_gaps=True):
         """
         Returns insulating slab for shunt capacitors
         """

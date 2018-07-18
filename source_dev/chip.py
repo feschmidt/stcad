@@ -127,7 +127,7 @@ class Base_Chip(cad.core.Cell):
         self.add(thetext)
 
 
-    def add_ebpg_marker(self, pos=(-3310,-1560), size=20, spacing=200, number=4, duplicate=True, layer=None):
+    def add_ebpg_marker(self, pos=(-3310,-1560), size=20, spacing=200, number=4, duplicate=True, layer=None, add_skirt=True, skirt_margin=50, skirt_layer=91):
         """
         4 ebeam marker each 20um rectangular and 200um spaced apart
         params pos : tuple of positions
@@ -148,8 +148,13 @@ class Base_Chip(cad.core.Cell):
             marker[1] = cad.core.CellReference(marker[0], origin=(-2*pos[0]-spacing,-2*pos[1]-spacing))
             marker[2] = cad.core.CellReference(marker[0], origin=(0,-2*pos[1]-spacing))
             marker[3] = cad.core.CellReference(marker[0], origin=(-2*pos[0]-spacing,0))
+        if add_skirt:
+            for mm in marker:
+                bbx,bby = mm.bounding_box
+                self.add(cad.shapes.Rectangle((bbx[0]-skirt_margin,bbx[1]-skirt_margin),(bby[0]+skirt_margin,bby[1]+skirt_margin),layer=skirt_layer))
+
         self.add(marker)
-        return [mm.bounding_box for mm in marker]
+        # return [mm.bounding_box for mm in marker]
 
 
     def save_to_gds(self, loc = 'examples/', save = True, show = False):

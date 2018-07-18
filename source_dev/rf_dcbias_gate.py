@@ -109,7 +109,7 @@ class RFShuntGate():
         # Create shunt
         x1 = x0+feedlength
         y1 = y0#-self.centerwidth/2-self.gapwidth
-        self.shunt1 = Shunt_Cap(pos=(x1,y1),shunt=self.shunt)
+        self.shunt1 = Shunt_Cap(centerwidth=self.centerwidth,gapwidth=self.gapwidth,pos=(x1,y1),shunt=self.shunt)
 
         # Connect shunt to end
         x2 = x1+self.shunt[0]+self.gapwidth
@@ -142,9 +142,8 @@ class RFShuntGate():
                 gJJ_box.add(cad.utils.reflect(box2,'y',origin=(holex0+hole[0]/2,holey0)))
                 gJJ_box.add(cad.utils.rotate(box1,180,center=(holex0+hole[0]/2,holey0)))
                 gJJ_box.add(cad.utils.rotate(box2,180,center=(holex0+hole[0]/2,holey0)))
-            jjboxmask = cad.shapes.Rectangle((self.jjboxpts[0][0]-2*self.maskmargin,self.jjboxpts[0][1]-5*self.maskmargin),
-            (self.jjboxpts[1][0]+2*self.maskmargin,self.jjboxpts[1][1]+5*self.maskmargin),layer=91)
-            gJJ_box.add(jjboxmask)
+            bbx,bby = gJJ_box.bounding_box
+            gJJ_box.add(cad.shapes.Rectangle((bbx[0]-self.maskmargin,bbx[1]-self.maskmargin),(bby[0]+self.maskmargin,bby[1]+self.maskmargin),layer=91))
 
         endhole = holex0+hole[0]
 
@@ -157,7 +156,7 @@ class RFShuntGate():
             # Create second shunt
             x1 = self.gatecpwpts[-1][0]
             y1 = y0
-            self.shunt2 = Shunt_Cap(pos=(x1,y1),shunt=self.shunt)
+            self.shunt2 = Shunt_Cap(centerwidth=self.centerwidth,gapwidth=self.gapwidth,pos=(x1,y1),shunt=self.shunt)
 
             # Connect second shunt to end
             x2 = x1+self.shunt[0]+self.gapwidth

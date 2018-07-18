@@ -105,7 +105,7 @@ class RFShunt():
         # Create shunt
         x1 = x0+feedlength
         y1 = y0
-        shunt1 = Shunt_Cap(shunt=self.shunt)
+        shunt1 = Shunt_Cap(centerwidth=self.centerwidth,gapwidth=self.gapwidth,shunt=self.shunt)
         
         CPWcell = cad.core.Cell('CPW')
         
