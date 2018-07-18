@@ -233,7 +233,7 @@ class RFShunt():
         squidcell.add(squidtop11)
         return squidcell
 
-    def gen_label(self,pos):
+    def gen_label(self,pos, add_skirt=True, skirt_margin=50, skirt_layer=91):
         """
         Generate label with termination type
         if squid: squid wJJ x wlead \n wSQUID x lSQUID \n cavlength
@@ -248,5 +248,8 @@ class RFShunt():
         label = cad.shapes.LineLabel(lblstrng,100,
                                      (pos[0],pos[1]),line_width=5,layer=self.layer_bottom)
         labelcell.add(label)
+        if add_skirt:
+            bbx,bby = labelcell.bounding_box
+            labelcell.add(cad.shapes.Rectangle((bbx[0]-skirt_margin,bbx[1]-skirt_margin),(bby[0]+skirt_margin,bby[1]+skirt_margin),layer=skirt_layer))
         
-        return labelcell
+        self.cell.add(labelcell)
