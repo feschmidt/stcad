@@ -1427,8 +1427,10 @@ class Shunt_Cap(cad.core.Cell):
     Make a cell with shunt capacitor.  A skirt can be added by setting 'add_skirt' to True.
     """
     def __init__(self,
-                centerwidth=12,gapwidth=5,shunt=(208,520,268+10,841+10,268,841),layer_bottom=1,layer_ins=2,layer_top=3,layer_fill=5,fill_gaps=True,
+                centerwidth=12,gapwidth=5,shunt=(208,520,268+10,841+10,268,841),
+                layer_bottom=1,layer_ins=2,layer_top=3,layer_fill=5,fill_gaps=True,
                 add_skirt=True,skirt_distance=5,layer_skirt=91,
+                shunt_type='A',
                 name = 'Shunt_Cap',
                 pos=(0,0)
                 ):
@@ -1444,8 +1446,8 @@ class Shunt_Cap(cad.core.Cell):
 
         x0,y0=pos[0],pos[1]
         shuntbase = self.gen_shunt_base((x0,y0))
-        shuntins = self.gen_shunt_ins((x0,y0),fill_gaps=fill_gaps)
-        shunttop = self.gen_shunt_top((x0,y0))
+        shuntins = self.gen_shunt_ins((x0,y0),fill_gaps=fill_gaps,shunt_type=shunt_type)
+        shunttop = self.gen_shunt_top((x0,y0),shunt_type=shunt_type)
         
         [self.add(toadd) for toadd in [shuntbase, shuntins, shunttop]]
 
@@ -1468,9 +1470,12 @@ class Shunt_Cap(cad.core.Cell):
         shunt11 = cad.utils.reflect(shunt1,'x',origin=(0,y0))
         shuntbase.add(shunt1)
         shuntbase.add(shunt11)
+
+        print('Area of shunt base: {} um2'.format(self.shunt[0]*self.shunt[1]))
+
         return shuntbase
 
-    def gen_shunt_ins(self,pos,fill_gaps=True):
+    def gen_shunt_ins(self,pos,fill_gaps,shunt_type):
         """
         Returns insulating slab for shunt capacitors
         """
@@ -1478,24 +1483,43 @@ class Shunt_Cap(cad.core.Cell):
         y0 = pos[1]-self.shunt[3]/2
 
         shuntins = cad.core.Cell('shuntins')
-        shuntpoints = [(x0,y0),
-                    (x0+self.shunt[2],y0+self.shunt[3])]
-        shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_ins)
-        shuntins.add(shunt)
+        if shunt_type=='A':
+            shuntpoints = [(x0,y0),
+                        (x0+self.shunt[2],y0+self.shunt[3])]
+            shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_ins)
+            shuntins.add(shunt)
+            print('Area of shunt dielectric: {} um2'.format(self.shunt[2]*self.shunt[3]))
+        elif shunt_type=='B':
+            dy = self.centerwidth/2+self.gapwidth+self.centerwidth
+            dx = (self.shunt[4]-self.shunt[0])/2
+            shuntpoints = [(x0,y0),(x0,y0+self.shunt[3]/2-dy),(x0+dx,y0+self.shunt[3]/2-dy),(x0+dx,y0+self.shunt[3]/2),
+                            (x0+self.shunt[2]/2,y0+self.shunt[3]/2),(x0+self.shunt[2]/2,y0)]
+            shunt1 = cad.core.Boundary(shuntpoints, layer=self.layer_ins)
+            shunt2 = cad.utils.reflect(shunt1,'y',origin=(x0+self.shunt[2]/2,y0+self.shunt[3]/2))
+            shunt3 = cad.utils.reflect(shunt1,'x',origin=(x0+self.shunt[2]/2,y0+self.shunt[3]/2))
+            shunt4 = cad.utils.rotate(shunt1,180,center=(x0+self.shunt[2]/2,y0+self.shunt[3]/2))
+            for toadd in [shunt1,shunt2,shunt3,shunt4]:
+                shuntins.add(toadd)
+            print('Area of shunt dielectric: {} um2'.format(self.shunt[2]*self.shunt[3]-dx*dy))
+        else:
+            return KeyError('Only available shunt_type at this point are "A" and "B".')
         # this is for covering the gaps with additional dielectric to prevent shorting
         # 02-07-2018
         if fill_gaps:
             y0 = pos[1]+self.gapwidth/2
-            dielgaps = [(x0,y0+self.centerwidth/2.),(pos[0],y0+self.centerwidth/2.),(pos[0],y0+self.shunt[1]/2),
+            dx=0
+            if shunt_type=='B':
+                dx = (self.shunt[4]-self.shunt[0])/2
+            dielgaps = [(x0+dx,y0+self.centerwidth/2.),(pos[0],y0+self.centerwidth/2.),(pos[0],y0+self.shunt[1]/2),
                         (pos[0]+self.shunt[0]+self.gapwidth,y0+self.shunt[1]/2),(pos[0]+self.shunt[0]+self.gapwidth,y0+self.centerwidth/2.),
-                        (pos[0]+self.shunt[0]+self.gapwidth+(pos[0]-x0),y0+self.centerwidth/2.)]
+                        (pos[0]+self.shunt[0]+self.gapwidth+(pos[0]-x0)-dx,y0+self.centerwidth/2.)]
             shunt1 = cad.core.Path(dielgaps,self.gapwidth+2,layer=self.layer_fill)
             shunt11 = cad.utils.reflect(shunt1,'x',origin=(0,y0-self.gapwidth/2))
             shuntins.add(shunt1)
             shuntins.add(shunt11)
         return shuntins
 
-    def gen_shunt_top(self,pos):
+    def gen_shunt_top(self,pos,shunt_type):
         """
         Returns top plate for shunt capacitors
         """
@@ -1503,10 +1527,27 @@ class Shunt_Cap(cad.core.Cell):
         y0 = pos[1]-self.shunt[5]/2
 
         shunttop = cad.core.Cell('shunttop')
-        shuntpoints = [(x0,y0),
-                    (x0+self.shunt[4],y0+self.shunt[5])]
-        shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_top)
-        
-        shunttop.add(shunt)
-        
+        if shunt_type=='A':
+            shuntpoints = [(x0,y0),
+                        (x0+self.shunt[4],y0+self.shunt[5])]
+            shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_top)
+            
+            shunttop.add(shunt)
+            print('Area of shunt top: {} um2'.format(self.shunt[4]*self.shunt[5]))
+
+        elif shunt_type=='B':
+            dy = self.centerwidth/2+self.gapwidth+self.centerwidth+self.gapwidth
+            dx = (self.shunt[4]-self.shunt[0])/2
+            shuntpoints = [(x0,y0),(x0,y0+self.shunt[5]/2-dy),(x0+dx,y0+self.shunt[5]/2-dy),(x0+dx,y0+self.shunt[5]/2),
+                            (x0+self.shunt[4]/2,y0+self.shunt[5]/2),(x0+self.shunt[4]/2,y0)]
+            shunt1 = cad.core.Boundary(shuntpoints, layer=self.layer_top)
+            shunt2 = cad.utils.reflect(shunt1,'y',origin=(x0+self.shunt[4]/2,y0+self.shunt[5]/2))
+            shunt3 = cad.utils.reflect(shunt1,'x',origin=(x0+self.shunt[4]/2,y0+self.shunt[5]/2))
+            shunt4 = cad.utils.rotate(shunt1,180,center=(x0+self.shunt[4]/2,y0+self.shunt[5]/2))
+            for toadd in [shunt1,shunt2,shunt3,shunt4]:
+                shunttop.add(toadd)
+            print('Area of shunt top: {} um2'.format(self.shunt[4]*self.shunt[5]-dx*dy))
+        else:
+            return KeyError('Only available shunt_type at this point are "A" and "B".')
+
         return shunttop

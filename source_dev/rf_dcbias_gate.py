@@ -34,6 +34,7 @@ class RFShuntGate():
         self.shuntmasksize = (260,740)
         self.shuntgate = False
         self.gatestub = 50 # length of gate stub
+        self.shunt_type='A' # 'A' or 'B'
 
         for key,val in list(dict_dcbias.items()):
             setattr(self,key,val)
@@ -109,7 +110,7 @@ class RFShuntGate():
         # Create shunt
         x1 = x0+feedlength
         y1 = y0#-self.centerwidth/2-self.gapwidth
-        self.shunt1 = Shunt_Cap(centerwidth=self.centerwidth,gapwidth=self.gapwidth,pos=(x1,y1),shunt=self.shunt)
+        self.shunt1 = Shunt_Cap(centerwidth=self.centerwidth,gapwidth=self.gapwidth,pos=(x1,y1),shunt=self.shunt,shunt_type=self.shunt_type)
 
         # Connect shunt to end
         x2 = x1+self.shunt[0]+self.gapwidth
@@ -156,7 +157,7 @@ class RFShuntGate():
             # Create second shunt
             x1 = self.gatecpwpts[-1][0]
             y1 = y0
-            self.shunt2 = Shunt_Cap(centerwidth=self.centerwidth,gapwidth=self.gapwidth,pos=(x1,y1),shunt=self.shunt)
+            self.shunt2 = Shunt_Cap(centerwidth=self.centerwidth,gapwidth=self.gapwidth,pos=(x1,y1),shunt=self.shunt,shunt_type=self.shunt_type)
 
             # Connect second shunt to end
             x2 = x1+self.shunt[0]+self.gapwidth

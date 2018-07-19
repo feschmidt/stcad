@@ -23,7 +23,7 @@ class RFShunt():
         self.layer_ins = 2
         self.layer_top = 3
 
-        self.shunttype = 0
+        self.shunt_type = 'A'
 
         for key,val in list(dict_dcbias.items()):
             setattr(self,key,val)
@@ -105,7 +105,7 @@ class RFShunt():
         # Create shunt
         x1 = x0+feedlength
         y1 = y0
-        shunt1 = Shunt_Cap(centerwidth=self.centerwidth,gapwidth=self.gapwidth,shunt=self.shunt)
+        shunt1 = Shunt_Cap(centerwidth=self.centerwidth,gapwidth=self.gapwidth,shunt=self.shunt,shunt_type=self.shunt_type)
         
         CPWcell = cad.core.Cell('CPW')
         
