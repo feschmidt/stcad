@@ -133,8 +133,8 @@ class RFShuntGate():
             gJJ_box.add(cad.shapes.Rectangle(self.jjboxpts[0],self.jjboxpts[1],layer=self.layer_bottom))
             # Add marker for gJJ
             if holemarker == True:
-                box1=cad.shapes.Rectangle((holex0+5,holey0+hole[1]/2+5),(holex0+10,holey0+hole[1]/2+10),layer=self.layer_bottom)
-                box2=cad.shapes.Rectangle((holex0+10,holey0+hole[1]/2),(holex0+15,holey0+hole[1]/2+5),layer=self.layer_bottom)
+                box1=cad.shapes.Rectangle((holex0,holey0+hole[1]/2),(holex0-5,holey0+hole[1]/2+5),layer=self.layer_bottom)
+                box2=cad.shapes.Rectangle((holex0-5,holey0+hole[1]/2-5),(holex0-10,holey0+hole[1]/2),layer=self.layer_bottom)
                 gJJ_box.add(box1)
                 gJJ_box.add(box2)
                 gJJ_box.add(cad.utils.reflect(box1,'x',origin=(holex0+hole[0]/2,holey0)))
