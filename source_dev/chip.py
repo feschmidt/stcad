@@ -16,7 +16,8 @@ class Base_Chip(cad.core.Cell):
     Options for label location: By default slightly to the right of x=0 and 700um below upper edge. Can be adjusted by labelloc=(xpos,ypos)
     Options for label linewidth: labelwidth=5 by default
     """
-    def __init__(self, name, xdim=1000, ydim=1000, frame=True, label=True, wafer=False, labelloc=(0,0), labelwidth=5, boxwidth=None):
+    def __init__(self, name, xdim=1000, ydim=1000, frame=True, label=True, wafer=False, labelloc=(0,0), labelwidth=5, boxwidth=None,
+        layer_label=20, layer_box=21, layer_alignment=22, layer_testpads=23):
         
         super(Base_Chip, self).__init__(name)
         self.name = name
@@ -34,10 +35,10 @@ class Base_Chip(cad.core.Cell):
             self.boxwidth = boxwidth
         
             
-        self.layer_label = 20
-        self.layer_box = 21
-        self.layer_alignment = 22
-        self.layer_testpads = 23
+        self.layer_label = layer_label
+        self.layer_box = layer_box
+        self.layer_alignment = layer_alignment
+        self.layer_testpads = layer_testpads
         
         if frame==True or label==True:
             if wafer==False:
@@ -53,7 +54,7 @@ class Base_Chip(cad.core.Cell):
         Generate chip with dimensions xdim,ydim
         """
         box=cad.shapes.Box((-self.xdim/2, -self.ydim/2), (self.xdim/2, self.ydim/2),
-                         width=self.boxwidth, layer =self.layer_box)
+                         width=self.boxwidth, layer=self.layer_box)
 
         date = time.strftime("%d/%m/%Y")
         # The label is added 100 um on top of the main cell
@@ -126,7 +127,7 @@ class Base_Chip(cad.core.Cell):
         self.add(thetext)
 
 
-    def add_ebpg_marker(self, pos=(-3310,-1560), size=20, spacing=200, number=4, duplicate=True, layer=None):
+    def add_ebpg_marker(self, pos=(-3310,-1560), size=20, spacing=200, number=4, duplicate=True, layer=None, add_skirt=True, skirt_margin=50, skirt_layer=91):
         """
         4 ebeam marker each 20um rectangular and 200um spaced apart
         params pos : tuple of positions
@@ -147,8 +148,13 @@ class Base_Chip(cad.core.Cell):
             marker[1] = cad.core.CellReference(marker[0], origin=(-2*pos[0]-spacing,-2*pos[1]-spacing))
             marker[2] = cad.core.CellReference(marker[0], origin=(0,-2*pos[1]-spacing))
             marker[3] = cad.core.CellReference(marker[0], origin=(-2*pos[0]-spacing,0))
+        if add_skirt:
+            for mm in marker:
+                bbx,bby = mm.bounding_box
+                self.add(cad.shapes.Rectangle((bbx[0]-skirt_margin,bbx[1]-skirt_margin),(bby[0]+skirt_margin,bby[1]+skirt_margin),layer=skirt_layer))
+
         self.add(marker)
-        return [mm.bounding_box for mm in marker]
+        # return [mm.bounding_box for mm in marker]
 
 
     def save_to_gds(self, loc = 'examples/', save = True, show = False):
@@ -230,7 +236,7 @@ class Base_Chip(cad.core.Cell):
         self.add(marker)
         return marker.bounding_box
     
-    def add_cross_single(self,pos=(0,0),dim=(400,40),clayer=5):
+    def add_cross_single(self,pos=(0,0),dim=(500,50),clayer=5):
         """
         Add single cross for dicing
         """
@@ -245,7 +251,7 @@ class Base_Chip(cad.core.Cell):
         return marker.bounding_box
 
     
-    def add_cross_corners(self,dim=(400,40),clayer=5):
+    def add_cross_corners(self,dim=(500,50),clayer=5):
         """
         Add crosses in the corners for dicing
         """
@@ -261,7 +267,7 @@ class Base_Chip(cad.core.Cell):
         [self.add(toadd) for toadd in [markerf1, markerf2, markerf3, markerf4]]
         return marker.bounding_box
         
-    def add_corners(self,dim=(400,40),clayer=5):
+    def add_corners(self,dim=(500,50),clayer=5):
         """
         Add corners for dicing
         """
@@ -277,14 +283,14 @@ class Base_Chip(cad.core.Cell):
         [self.add(toadd) for toadd in [markerf1, markerf2, markerf3, markerf4]]
         return marker.bounding_box
 
-    '''       
+         
     def add_TUlogo(self, pos=(0,100)):
         """
         *** BROKEN
         Issue with dxfImport
         """
         # logo is added 100um below bottom edge of chip
-        logo = cad.core.DxfImport('examples/cad_files/TU_Delft_logo_Black.dxf',scale=1.0)
+        logo = cad.core.DxfImport('TU_Delft_logo_Black.dxf',scale=1.0)
         #logo.layer=self.layer_label
         self.add(logo)
-    '''
+    

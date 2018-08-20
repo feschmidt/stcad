@@ -1,7 +1,7 @@
 import numpy as np
 import gdsCAD as cad
-from .CPW import *
-from .testing_fillet import fillet
+from .objects import CPW
+from .objects import Shunt_Cap
 
 class RFShuntGate():
     '''
@@ -24,8 +24,8 @@ class RFShuntGate():
         self.cell = cad.core.Cell('RF CELL') 
 
         self.layer_bottom = 1
-        self.layer_top = 2
-        self.layer_ins = 3
+        self.layer_ins = 2
+        self.layer_top = 3
         
         self.ymax = 1500
         self.nbends = 1
@@ -34,6 +34,7 @@ class RFShuntGate():
         self.shuntmasksize = (260,740)
         self.shuntgate = False
         self.gatestub = 50 # length of gate stub
+        self.shunt_type='A' # 'A' or 'B'
 
         for key,val in list(dict_dcbias.items()):
             setattr(self,key,val)
@@ -58,9 +59,6 @@ class RFShuntGate():
         # Generate first cavity
         rfcell = cad.core.Cell('RESONATOR')
         resonator = self.gen_cavity_new(x0,y0,feedlength,self.holedim,self.shuntgate)
-        if mask:
-            rfmask = self.gen_holey_ground_mask()
-            rfcell.add(rfmask)
         rfcell.add(resonator)
 
         self.cell.add(rfcell)
@@ -86,9 +84,6 @@ class RFShuntGate():
         rfcell = cad.core.Cell('RESONATOR')
         resonator = self.gen_cavity_new(x0,y0,feedlength,self.holedim,self.shuntgate,gJJ=gJJ)
         rfcell.add(resonator)
-        if mask:
-            rfmask = self.gen_holey_ground_mask()
-            rfcell.add(rfmask)
 
         if loc == 'top':
             self.cell.add(rfcell)
@@ -109,15 +104,16 @@ class RFShuntGate():
         
         # Create feed to shunt
         self.feedlist = [[x0,y0],[x0+feedlength,y0]]
-        part1 = CPW(self.feedlist, layer=self.layer_bottom, pin=self.centerwidth,gap=self.gapwidth)        
+        part1 = CPW(self.feedlist, layer=self.layer_bottom, pin=self.centerwidth,gap=self.gapwidth)
+        part1.add_mask(width=self.centerwidth+2*self.gapwidth+2*self.maskmargin,layer=91)  
         
         # Create shunt
-        x1 = x0+feedlength+self.gapwidth/2
+        x1 = x0+feedlength
         y1 = y0#-self.centerwidth/2-self.gapwidth
-        self.shunt1 = self.gen_shunt_full((x1,y1))
+        self.shunt1 = Shunt_Cap(centerwidth=self.centerwidth,gapwidth=self.gapwidth,pos=(x1,y1),shunt=self.shunt,shunt_type=self.shunt_type)
 
         # Connect shunt to end
-        x2 = x1+self.shunt[0]+self.gapwidth/2
+        x2 = x1+self.shunt[0]+self.gapwidth
         y2 = y0
 
         if not shuntgate:
@@ -134,11 +130,11 @@ class RFShuntGate():
             # Add hole for gJJ
             gJJ_box = cad.core.Cell('JJ BOX')
             self.jjboxpts = [(holex0, holey0-hole[1]/2),(holex0+hole[0],holey0+hole[1]/2)]
-            gJJ_box.add(cad.shapes.Rectangle(self.jjboxpts[0],self.jjboxpts[1]))
+            gJJ_box.add(cad.shapes.Rectangle(self.jjboxpts[0],self.jjboxpts[1],layer=self.layer_bottom))
             # Add marker for gJJ
             if holemarker == True:
-                box1=cad.shapes.Rectangle((holex0+5,holey0+hole[1]/2+5),(holex0+10,holey0+hole[1]/2+10))
-                box2=cad.shapes.Rectangle((holex0+10,holey0+hole[1]/2),(holex0+15,holey0+hole[1]/2+5))
+                box1=cad.shapes.Rectangle((holex0,holey0+hole[1]/2),(holex0-5,holey0+hole[1]/2+5),layer=self.layer_bottom)
+                box2=cad.shapes.Rectangle((holex0-5,holey0+hole[1]/2-5),(holex0-10,holey0+hole[1]/2),layer=self.layer_bottom)
                 gJJ_box.add(box1)
                 gJJ_box.add(box2)
                 gJJ_box.add(cad.utils.reflect(box1,'x',origin=(holex0+hole[0]/2,holey0)))
@@ -147,23 +143,28 @@ class RFShuntGate():
                 gJJ_box.add(cad.utils.reflect(box2,'y',origin=(holex0+hole[0]/2,holey0)))
                 gJJ_box.add(cad.utils.rotate(box1,180,center=(holex0+hole[0]/2,holey0)))
                 gJJ_box.add(cad.utils.rotate(box2,180,center=(holex0+hole[0]/2,holey0)))
+            bbx,bby = gJJ_box.bounding_box
+            gJJ_box.add(cad.shapes.Rectangle((bbx[0]-self.maskmargin,bbx[1]-self.maskmargin),(bby[0]+self.maskmargin,bby[1]+self.maskmargin),layer=91))
+
         endhole = holex0+hole[0]
 
         if shuntgate:
             # Connect hole to shunt
             self.gatecpwpts = [[endhole,y0],[endhole+self.gatestub,y0]]
-            gatecpw = CPW(self.gatecpwpts,gap=self.gapwidth,pin=self.centerwidth,layer=1)
+            gatecpw = CPW(self.gatecpwpts,gap=self.gapwidth,pin=self.centerwidth,layer=self.layer_bottom)
+            gatecpw.add_mask(width=self.centerwidth+2*self.gapwidth+2*self.maskmargin,layer=91)
             
             # Create second shunt
             x1 = self.gatecpwpts[-1][0]
             y1 = y0
-            self.shunt2 = self.gen_shunt_full((x1,y1))
+            self.shunt2 = Shunt_Cap(centerwidth=self.centerwidth,gapwidth=self.gapwidth,pos=(x1,y1),shunt=self.shunt,shunt_type=self.shunt_type)
 
             # Connect second shunt to end
-            x2 = x1+self.shunt[0]+self.gapwidth/2
+            x2 = x1+self.shunt[0]+self.gapwidth
             y2 = y0
             self.endcpwpts = [[x2,y2],[-self.position[0],y2]]#[x2+self.feedlength,y2]]
             endcpw = CPW(self.endcpwpts,gap=self.gapwidth,pin=self.centerwidth,layer=1)
+            endcpw.add_mask(width=self.centerwidth+2*self.gapwidth+2*self.maskmargin,layer=91)
 
 
         for toadd in [part1,self.shunt1,part2]:
@@ -229,6 +230,7 @@ class RFShuntGate():
 
             self.cpwlist = cpwlist
             cpw = CPW(self.cpwlist,pin=pin,gap=gap,turn_radius=turnradius,layer=layer)
+            cpw.add_mask(width=self.centerwidth+2*self.gapwidth+2*self.maskmargin,layer=91)
 
         print('Input length:', length)
         print('Available xspace:', xspace)
@@ -239,119 +241,8 @@ class RFShuntGate():
 
         return CPWcell
 
-
-    def gen_holey_ground_mask(self):
-        self.maskcell = cad.core.Cell('MASK')
-
-        self.maskcell.add(CPW(self.feedlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91))
-        self.maskcell.add(CPW(self.cpwlist,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91))
-        bbx, bby = self.shunt1.bounding_box
-        self.maskcell.add(cad.shapes.Rectangle((bbx[0]-self.maskmargin,bbx[1]-self.maskmargin),(bby[0]+self.maskmargin,bby[1]+self.maskmargin),layer=91))
-        jjboxmask = cad.shapes.Rectangle((self.jjboxpts[0][0]-2*self.maskmargin,self.jjboxpts[0][1]-5*self.maskmargin),
-            (self.jjboxpts[1][0]+2*self.maskmargin,self.jjboxpts[1][1]+5*self.maskmargin),layer=91)
-        self.maskcell.add(jjboxmask)
-
-        if self.shuntgate:
-            self.maskcell.add(CPW(self.endcpwpts,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91))
-            bbx, bby = self.shunt2.bounding_box
-            self.maskcell.add(cad.shapes.Rectangle((bbx[0]-self.maskmargin,bbx[1]-self.maskmargin),(bby[0]+self.maskmargin,bby[1]+self.maskmargin),layer=91))
-            self.maskcell.add(CPW(self.gatecpwpts,pin=0.,gap=self.centerwidth/2.+self.gapwidth+self.maskmargin,turn_radius=self.turnradius,layer=91))
-
-        return self.maskcell
-
-
-    def gen_shunt_full(self,pos):
-        """
-        Creates a shunt capacitor from center conductor to ground
-        """
-        x0 = pos[0]
-        y0 = pos[1]
-
-        shuntcell = cad.core.Cell('SHUNT')
-        shuntbase = self.gen_shunt_base((x0,y0))
-        shunttop = self.gen_shunt_top((x0+self.gapwidth/2+self.shunt[0]/2-self.shunt[4]/2,y0-self.shunt[5]/2),shunttype=self.shunttype)
-        shuntins = self.gen_shunt_ins((x0+self.gapwidth/2-(self.shunt[2]-self.shunt[0])/2,y0-self.shunt[3]/2))
-
-        [shuntcell.add(toadd) for toadd in [shuntbase, shuntins, shunttop]]
-        return shuntcell
-
-
-    def gen_shunt_base(self,pos):
-        """
-        Base layer for shunt
-        """
-        x0 = pos[0]
-        y0 = pos[1]
-
-        shuntbase = cad.core.Cell('shuntbase')
-        '''
-        shuntpoints = [(x0, y0+self.gapwidth),
-                     (x0, y0-self.shunt[1]/2.),
-                     (x0+self.shunt[0]+2*self.gapwidth, y0-self.shunt[1]/2.),
-                     (x0+self.shunt[0]+2*self.gapwidth, y0+self.gapwidth),
-                     (x0+self.shunt[0]+self.gapwidth, y0+self.gapwidth),
-                     (x0+self.shunt[0]+self.gapwidth, y0+self.gapwidth-self.shunt[1]/2.),
-                     (x0+self.gapwidth, y0+self.gapwidth-self.shunt[1]/2.),
-                     (x0+self.gapwidth, y0+self.gapwidth)]
-        shunt1 = cad.core.Boundary(shuntpoints, layer=self.layer_bottom)
-        '''
-        shuntpoints = [(x0,y0+self.centerwidth/2.),(x0,y0+self.shunt[1]/2.+self.gapwidth/2.),
-                    (x0+self.shunt[0]+self.gapwidth,y0+self.shunt[1]/2.+self.gapwidth/2.),(x0+self.shunt[0]+self.gapwidth,y0+self.centerwidth/2.)]
-        shunt1 = cad.core.Path(shuntpoints,self.gapwidth)
-        shunt11 = cad.utils.reflect(shunt1,'x',origin=(0,y0))#+self.gapwidth+self.centerwidth/2.))
-        shuntbase.add(shunt1)
-        shuntbase.add(shunt11)
-        return shuntbase
-      
-
-    def gen_shunt_ins(self,pos):
-        """
-        Returns insulating slab for shunt capacitors
-        """
-        x0 = pos[0]
-        y0 = pos[1]
-
-        shuntins = cad.core.Cell('shuntins')
-        shuntpoints = [(x0,y0),
-                    (x0+self.shunt[2],y0+self.shunt[3])]
-        shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_ins)
-        shuntins.add(shunt)
-        return shuntins
-
-
-    def gen_shunt_top(self,pos,shunttype):
-        """
-        Returns top plate for shunt capacitors
-        """
-        x0 = pos[0]
-        y0 = pos[1]
-
-        shunttop = cad.core.Cell('shunttop')
-        if shunttype==0:
-            shuntpoints = [(x0,y0),
-                        (x0+self.shunt[4],y0+self.shunt[5])]
-            shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_top)
-            
-            shunttop.add(shunt)
-
-        elif shunttype==1:
-            dy = self.centerwidth+self.gapwidth*1.4
-            dx = 30
-            shuntpoints = [(x0-dx,y0),(x0-dx,y0+self.shunt[5]/2-dy),(x0,y0+self.shunt[5]/2-dy),(x0,y0+self.shunt[5]/2),
-                            (x0+self.shunt[4]/2,y0+self.shunt[5]/2),(x0+self.shunt[4]/2,y0)]
-            shunt1 = cad.core.Boundary(shuntpoints, layer=self.layer_top)
-            shunt2 = cad.utils.reflect(shunt1,'y',origin=(x0+self.shunt[4]/2,y0+self.shunt[5]/2))
-            shunt3 = cad.utils.reflect(shunt1,'x',origin=(x0+self.shunt[4]/2,y0+self.shunt[5]/2))
-            shunt4 = cad.utils.rotate(shunt1,180,center=(x0+self.shunt[4]/2,y0+self.shunt[5]/2))
-            for toadd in [shunt1,shunt2,shunt3,shunt4]:
-                shunttop.add(toadd)
-        else:
-            raise KeyError('shunttype has to be 0 or 1')
-        
-        return shunttop
-
     
-    def gen_label(self,pos):
+    def gen_label(self,pos, add_skirt=True, skirt_margin=50, skirt_layer=91):
         """
         Generate label with termination type
         if squid: squid wJJ x wlead \n wSQUID x lSQUID \n cavlength
@@ -366,5 +257,8 @@ class RFShuntGate():
         label = cad.shapes.LineLabel(lblstrng,100,
                                      (pos[0],pos[1]),line_width=5,layer=self.layer_bottom)
         labelcell.add(label)
-
-        return labelcell
+        if add_skirt:
+            bbx,bby = labelcell.bounding_box
+            labelcell.add(cad.shapes.Rectangle((bbx[0]-skirt_margin,bbx[1]-skirt_margin),(bby[0]+skirt_margin,bby[1]+skirt_margin),layer=skirt_layer))
+        
+        self.cell.add(labelcell)
