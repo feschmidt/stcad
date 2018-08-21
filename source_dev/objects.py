@@ -1551,3 +1551,12 @@ class Shunt_Cap(cad.core.Cell):
             return KeyError('Only available shunt_type at this point are "A" and "B".')
 
         return shunttop
+
+class TrilayerJJ(cad.core.Cell):
+    """
+    Make a cell with trilayerJJs.  A skirt can be added by setting 'add_skirt' to True.
+    """
+    def __init__(self,
+                ):
+
+        super(Shunt_Cap, self).__init__(name)
