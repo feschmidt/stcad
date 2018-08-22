@@ -3,6 +3,8 @@ import numpy as np
 # Code copied from Lucas H. Gabrielli's heitzmann/gdspy module
 # https://github.com/heitzmann/gdspy
 # file: __init__.py
+# Input: points of a boundary object
+# Output: points of said object, but with rounded corners
 
 def fillet(points,
                radius,
