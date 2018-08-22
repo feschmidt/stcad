@@ -1,9 +1,9 @@
 import numpy as np
 from scipy.constants import epsilon_0
-from stcad.source_dev.utilities import *
-import gdsCAD as cad
 import copy
-from stcad.source_dev.chip import Base_Chip
+import gdsCAD as cad
+from .utilities import *
+from .chip import Base_Chip
 
 def increment(points,dx,dy):
     return points+[[points[-1][0]+dx,points[-1][1]+dy]]
