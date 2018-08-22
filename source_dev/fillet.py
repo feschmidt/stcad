@@ -2,6 +2,7 @@ import numpy as np
 
 # Code copied from Lucas H. Gabrielli's heitzmann/gdspy module
 # https://github.com/heitzmann/gdspy
+# file: __init__.py
 
 def fillet(points,
                radius,
