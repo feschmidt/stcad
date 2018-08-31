@@ -1556,7 +1556,76 @@ class TrilayerJJ(cad.core.Cell):
     """
     Make a cell with trilayerJJs.  A skirt can be added by setting 'add_skirt' to True.
     """
-    def __init__(self,
-                ):
+    def __init__(self,name="JJ"):
+        super(TrilayerJJ, self).__init__(name)
 
-        super(Shunt_Cap, self).__init__(name)
+    def gen_junction(self, JJsize, Si_overlap, Etch, cwidth, SQUID = False, dim = 10, origin=(0,0)):#, SQUIDdim = 8
+        yt0 = JJsize*2+Etch
+        Si_outer = JJsize + Si_overlap
+        Si_inner = 1/2*JJsize
+        Si_contact_width = Si_inner + Si_outer
+        x0 = origin[0]
+        y0 = origin[1]
+        #Si_y0 = origin[1]-1/2*cwidth+1/2*Si_contact_width
+        inner_box = [[Si_inner+x0,Si_inner+y0], [-Si_inner+x0,Si_inner+y0], 
+                     [-Si_inner+x0,-Si_inner+y0], [Si_inner+x0,-Si_inner+y0], [Si_inner+x0,Si_inner+y0]]
+        outer_box = [[Si_outer+x0,-JJsize+y0], [-Si_outer+x0,-JJsize+y0], 
+                     [-Si_outer+x0,JJsize+y0], [Si_outer+x0,JJsize+y0], [Si_outer+x0,-JJsize+y0]]
+        points = inner_box + outer_box
+        bdy = cad.core.Boundary(points,layer = 2)
+
+        if SQUID == True:
+            bdy2 = bdy.copy()
+            bdy_delta = 1/2*yt0
+            bdy.translate((0,-bdy_delta))
+            bdy2.translate((0,bdy_delta))
+            self.add(bdy2)
+
+            
+        
+        L_width = 2*JJsize
+        L_width_delta = 0.2*L_width
+        L_width_top = L_width+L_width_delta
+        Si_etch = JJsize + Etch + 1/2*L_width_top
+        if SQUID == False:
+            L_cord = [(x0,y0-Si_etch), (x0,y0+Si_etch), (x0-dim,y0+Si_etch)]
+            L_cord_top = [(x0+1/2*L_width_top,y0+Si_etch), (x0-dim,y0+Si_etch)]
+        if SQUID == True:
+            L_cord = [(x0,y0-Si_etch-1/2*yt0), (x0,y0+Si_etch+1/2*yt0), (x0-dim,y0+Si_etch+1/2*yt0)]
+            L_cord_top = [(x0+1/2*L_width_top,y0+Si_etch+1/2*yt0), (x0-dim,y0+Si_etch+1/2*yt0)]
+        L_shape = cad.core.Path(L_cord,L_width,layer = 1)
+        L_shape_top = cad.core.Path(L_cord_top,L_width_top,layer = 3)
+
+
+        Si_contact_cord = [(x0-2*Si_inner,y0),(x0+dim,y0)]
+        Si_contact_width = Si_inner + JJsize
+        if SQUID == True:
+            Si_contact_cord = [(x0-2*Si_inner,y0-1/2*yt0),(x0+dim,y0-1/2*yt0)]
+            Si_contact_cord1 = [(x0-2*Si_inner,y0+1/2*yt0),(x0+dim,y0+1/2*yt0)]
+            Si_contact2 = cad.core.Path(Si_contact_cord1,Si_contact_width,layer = 3)
+            self.add(Si_contact2)
+        Si_contact = cad.core.Path(Si_contact_cord,Si_contact_width,layer = 3)
+
+        text_size = 5*cwidth
+        text = cad.shapes.Label(str(2*JJsize),text_size,(x0-text_size,y0-2*text_size),layer=1)
+        text1 = cad.shapes.Label(str(2*JJsize),text_size,(x0-text_size,y0-2*text_size),layer=3)
+
+        self.add(text)
+        self.add(text1)
+        self.add(L_shape)
+        self.add(L_shape_top)
+        self.add(bdy)
+        self.add(Si_contact)
+
+class Bondpad(cad.core.Cell):
+    def __init__(self,name="BB",layer = 3):
+        super(Bondpad, self).__init__(name)
+        self.layer = layer
+    def gen_pad(self, origin, pwidth,shift_x = 0, shift_y = 0):
+        x = origin[0]
+        y = origin[1]
+        delta = 1/2*pwidth
+        pad = cad.shapes.Rectangle((x-delta+shift_x,y-delta+shift_y),
+                                   (x+delta+shift_x,y+delta+shift_y), layer = self.layer)
+        self.add(pad)
+
