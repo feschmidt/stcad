@@ -21,7 +21,7 @@ class RFShuntGate():
     def __init__(self, name, dict_dcbias, holemarker=True, shunttype=0, label=True):
 
         self.name = name
-        self.cell = cad.core.Cell('RF CELL') 
+        self.cell = cad.core.Cell('RF CELL')
 
         self.layer_bottom = 1
         self.layer_ins = 2
@@ -135,14 +135,19 @@ class RFShuntGate():
             if holemarker == True:
                 box1=cad.shapes.Rectangle((holex0,holey0+hole[1]/2),(holex0-5,holey0+hole[1]/2+5),layer=self.layer_bottom)
                 box2=cad.shapes.Rectangle((holex0-5,holey0+hole[1]/2-5),(holex0-10,holey0+hole[1]/2),layer=self.layer_bottom)
-                gJJ_box.add(box1)
-                gJJ_box.add(box2)
-                gJJ_box.add(cad.utils.reflect(box1,'x',origin=(holex0+hole[0]/2,holey0)))
-                gJJ_box.add(cad.utils.reflect(box2,'x',origin=(holex0+hole[0]/2,holey0)))
-                gJJ_box.add(cad.utils.reflect(box1,'y',origin=(holex0+hole[0]/2,holey0)))
-                gJJ_box.add(cad.utils.reflect(box2,'y',origin=(holex0+hole[0]/2,holey0)))
-                gJJ_box.add(cad.utils.rotate(box1,180,center=(holex0+hole[0]/2,holey0)))
-                gJJ_box.add(cad.utils.rotate(box2,180,center=(holex0+hole[0]/2,holey0)))
+                for thebox in [box1,box2]:
+                    for z in ['x','y']:
+                        gJJ_box.add(thebox)
+                        gJJ_box.add(cad.utils.reflect(thebox,z,origin=(holex0+hole[0]/2,holey0)))
+                        gJJ_box.add(cad.utils.rotate(thebox,180,center=(holex0+hole[0]/2,holey0)))
+                # gJJ_box.add(box1)
+                # gJJ_box.add(box2)
+                # gJJ_box.add(cad.utils.reflect(box1,'x',origin=(holex0+hole[0]/2,holey0)))
+                # gJJ_box.add(cad.utils.reflect(box2,'x',origin=(holex0+hole[0]/2,holey0)))
+                # gJJ_box.add(cad.utils.reflect(box1,'y',origin=(holex0+hole[0]/2,holey0)))
+                # gJJ_box.add(cad.utils.reflect(box2,'y',origin=(holex0+hole[0]/2,holey0)))
+                # gJJ_box.add(cad.utils.rotate(box1,180,center=(holex0+hole[0]/2,holey0)))
+                # gJJ_box.add(cad.utils.rotate(box2,180,center=(holex0+hole[0]/2,holey0)))
             bbx,bby = gJJ_box.bounding_box
             gJJ_box.add(cad.shapes.Rectangle((bbx[0]-self.maskmargin,bbx[1]-self.maskmargin),(bby[0]+self.maskmargin,bby[1]+self.maskmargin),layer=91))
 
@@ -202,12 +207,14 @@ class RFShuntGate():
         """
 
         CPWcell = cad.core.Cell('CPW')
-
+        print('xspace:',xspace)
+        print('length:',length)
         if length <= xspace:
             # first case: resonator fits into xspace
             if length < xspace:
                 raise Warning('Distance between launchers smaller than resonator length. Maybe change launcher positions and try again.')
-            cpw = CPW([[x0,y0],[x0+length,y0]],pin=pin,gap=gap,layer=layer)
+            self.cpwlist = [[x0,y0],[x0+length,y0]]
+            cpw = CPW(self.cpwlist,pin=pin,gap=gap,layer=layer)
             nbends = 0
         else:
             l1 = self.resl1(xspace,nbends,turnradius)
@@ -230,7 +237,7 @@ class RFShuntGate():
 
             self.cpwlist = cpwlist
             cpw = CPW(self.cpwlist,pin=pin,gap=gap,turn_radius=turnradius,layer=layer)
-            cpw.add_mask(width=self.centerwidth+2*self.gapwidth+2*self.maskmargin,layer=91)
+        cpw.add_mask(width=self.centerwidth+2*self.gapwidth+2*self.maskmargin,layer=91)
 
         print('Input length:', length)
         print('Available xspace:', xspace)
