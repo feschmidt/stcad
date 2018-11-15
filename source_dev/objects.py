@@ -22,6 +22,8 @@ def angle(vec):
 def norm(vec):
     return np.sqrt(vec[0]**2+vec[1]**2)
 
+def round_half(x):
+    return  int( round(2*x)/x )
 
 
 class WaffleCapacitor(cad.core.Cell):
@@ -127,6 +129,7 @@ class WaffleCapacitor(cad.core.Cell):
     def capacitance(self,gap):
 
         return epsilon_0*self.area/gap
+
 
 class hex_array_of_holes(cad.core.Cell):
     """docstring for ClassName"""
@@ -260,6 +263,7 @@ class MeanderingLine(cad.core.Cell):
             line.add(cad.core.Path(sec, line_width))
 
             self.add([line])
+
 
 class Hexagon(cad.core.Cell):
     """docstring for Hexagon"""
@@ -449,6 +453,7 @@ class Drum(cad.core.Cell):
         # self.add([electrode_tail])
         self.add([sacrificial_tail,sacrificial_drum])
 
+
 class WheelDrum(cad.core.Cell):
     """docstring for Drum"""
     def __init__(self, base_layer = 1,
@@ -537,8 +542,6 @@ class WheelDrum(cad.core.Cell):
             angle+=delta_angle
 
 
-
-
 class CPW(cad.core.Cell):
     """docstring for CPW"""
     def __init__(self, 
@@ -547,8 +550,9 @@ class CPW(cad.core.Cell):
         pin = 4.,
         gap = 2.,
         layer = 1,
-        name=''):   
-
+        name='',
+        clean = True, # remove redundant points that would otherwise create unnecessary bends in the line
+        writegaps = True):   # write only centerline if False, else write gaps   
 
         super(CPW, self).__init__(name)
         cad.core.default_layer = layer
@@ -558,8 +562,26 @@ class CPW(cad.core.Cell):
         self.pin = pin
         self.gap = gap
         self.layer = layer
+        self.turn_radius = turn_radius
+
+        if clean: 
+            idx = []
+            if len(points)>1:
+                (x0,y0) = points[0]
+                (x1,y1) = points[1]
+                for i,(x,y) in enumerate(points[2:]):
+                    t0 = np.arctan2(y1-y0,x1-x0)
+                    t1 = np.arctan2(y-y1,x-x1)
+                    if t0==t1:
+                        idx.append(i+1)
+                    x0,y0 = x1,y1
+                    x1,y1 = x,y
+            points = np.asarray([xy for i,xy in enumerate(points) if i not in idx])
         if len(points) == 2:
-            self.add(double_line_polygon(points[0],points[1],gap,pin))
+            if writegaps:
+                self.add(double_line_polygon(points[0],points[1],gap,pin))
+            else:
+                self.add(line_polygon(points[0],points[1],pin))
             self.length += norm(points[1]-points[0])
         else:
             n_last = len(points)-1
@@ -575,18 +597,39 @@ class CPW(cad.core.Cell):
                     angle_delta+=360.
                 if angle_delta > 180.:
                     angle_delta-=360.
+
                 sec.append(p_before)
-                self.add(double_line_polygon(sec[0],sec[1],gap,pin))
+                if writegaps:
+                    self.add(double_line_polygon(sec[0],sec[1],gap,pin))
+                else:
+                    self.add(line_polygon(sec[0],sec[1],pin))
+                angles = np.linspace(angle_i,angle_i+angle_delta, 199).T *np.pi/180.
                 self.length += norm(sec[1]-sec[0])
-                self.add(double_arc_polygon(curve_center, turn_radius,gap,pin,\
+                if writegaps:
+                    self.add(double_arc_polygon(curve_center, turn_radius,gap,pin,\
+                                    initial_angle=angle_i, final_angle=angle_i+angle_delta, number_of_points = 199))
+                else:
+                    self.add(arc_polygon(curve_center, turn_radius,pin,\
                                     initial_angle=angle_i, final_angle=angle_i+angle_delta, number_of_points = 199))
                 self.length += 2*np.pi*turn_radius*abs(angle_delta)/360.
                 sec=[p_after]
             sec.append([points[n_last][0],points[n_last][1]])
-            self.add(double_line_polygon(sec[0],sec[1],gap,pin))
+            if writegaps:
+                self.add(double_line_polygon(sec[0],sec[1],gap,pin))
+            else:
+                self.add(line_polygon(sec[0],sec[1],pin))
             self.length += norm(sec[1]-sec[0])
 
-    def add_launcher(self,pos,bonding_pad_length = 400,bonding_pad_gap = 200,bonding_pad_width =500,taper_length = 500,buffer_length = 100):
+    def add_launcher(self, pos,
+        bonding_pad_length = 400,
+        bonding_pad_gap = 200,
+        bonding_pad_width = 500,
+        taper_length = 500,
+        buffer_length = 100,
+        add_skirt=False,
+        skirt_distance=5,
+        skirt_layer=91):
+
         if pos == 'beginning' or pos=='b':
             p_0 = self.points[0]
             p_1 = self.points[1]
@@ -594,7 +637,8 @@ class CPW(cad.core.Cell):
             p_0 = self.points[-1]
             p_1 = self.points[-2]
         else:
-            raise ValueError("First argumnet should be either 'beginning' or 'b' or 'end' or 'e'")
+            raise ValueError("First argument should be either 'b(eginning)' or 'e(nd)'.")
+
         cad.core.default_layer=self.layer
         
         vec = p_1-p_0
@@ -612,34 +656,44 @@ class CPW(cad.core.Cell):
         startpoint = 0
         transl = pos
 
-        launchpoints_top = [[-buffer_length-taper_length-bonding_pad_length, 0 ],
-                            [-buffer_length-taper_length-bonding_pad_length, bonding_pad_gap + bonding_pad_width/2. ],
-                            [-buffer_length-taper_length-bonding_pad_length, bonding_pad_gap + bonding_pad_width/2. ],
-                            [-taper_length, bonding_pad_gap + bonding_pad_width/2. ],
-                            [0, self.gap + self.pin/2. ],
-                            [0, self.pin/2. ],
-                            [-taper_length, bonding_pad_width/2. ],
-                            [-taper_length-bonding_pad_length, bonding_pad_width/2. ],
-                            [-taper_length-bonding_pad_length,0. ]]
+        launchpoints_top = [[-buffer_length-taper_length-bonding_pad_length, 0 ],\
+                [-buffer_length-taper_length-bonding_pad_length, bonding_pad_gap + bonding_pad_width/2. ],\
+                [-taper_length, bonding_pad_gap + bonding_pad_width/2. ],\
+                [0, self.gap + self.pin/2. ],\
+                [0, self.pin/2. ],\
+                [-taper_length, bonding_pad_width/2. ],\
+                [-taper_length-bonding_pad_length, bonding_pad_width/2. ],\
+                [-taper_length-bonding_pad_length,0. ]]
 
-        launcher1 = cad.core.Boundary(launchpoints_top,layer = self.layer)
-        launcher2 = cad.utils.reflect(launcher1, 'x')
 
-        launcherlist = cad.core.Elements([launcher1, launcher2])
+        cell = cad.core.Cell('launcher')
+        cell.add(cad.core.Boundary(launchpoints_top,layer = self.layer))
+        cell.add(cad.utils.reflect(cad.core.Boundary(launchpoints_top,layer = self.layer), 'x'))
+
+      
+        if add_skirt == True:   
+            skirtpoints = [[ -skirt_distance-buffer_length-taper_length-bonding_pad_length, -skirt_distance - bonding_pad_gap - bonding_pad_width/2. ],\
+              [-skirt_distance-buffer_length-taper_length-bonding_pad_length,skirt_distance + bonding_pad_gap + bonding_pad_width/2. ],\
+              [-taper_length, skirt_distance+bonding_pad_gap + bonding_pad_width/2. ],\
+              [0, self.gap + self.pin/2. + skirt_distance ],\
+              [0, -self.gap - self.pin/2. - skirt_distance ],\
+              [-taper_length, -skirt_distance-bonding_pad_gap-bonding_pad_width/2. ]]
+
+            skirt = cad.core.Boundary( skirtpoints, layer = skirt_layer)
+            cell.add(skirt)
 
         if dir == 'left':
-            launcherlist = cad.utils.reflect(launcherlist, 'y')
+            angle = 180
         elif dir == 'down':
-            launcherlist = cad.utils.rotate(launcherlist, -90)
+            angle = -90 
         elif dir == 'up':
-            launcherlist = cad.utils.rotate(launcherlist, 90)
+            angle = 90
         elif dir == 'right':
-            pass
+            angle=0
+  
+        self.add(cell, p_0, angle)
 
-        launcherlist = cad.utils.translate(launcherlist, p_0)
-        self.add(launcherlist)
-
-    def add_open(self,pos,length = 10):
+    def add_open(self,pos,length = 10, add_skirt = False, skirt_distance = 5, skirt_layer = 91):
         if pos == 'beginning' or pos=='b':
             p_0 = self.points[1]
             p_1 = self.points[0]
@@ -655,7 +709,155 @@ class CPW(cad.core.Cell):
         vec*=length
         self.add(line_polygon(p_1,p_1+vec, self.gap*2.+self.pin))
 
+        if add_skirt == True:
+            cad.core.default_layer=skirt_layer
+            self.add(line_polygon(p_1, p_1+vec, self.gap*2 + self.pin + 2*skirt_distance))
+            cad.core.default_layer = self.layer
 
+            
+            
+    def add_airbridges(self, size_block, size_bridge, width, density, layers = [2,3]):
+        rect_block_1 = cad.shapes.Rectangle( (-width/2 - size_block[0], -size_block[1]/2), (-width/2, size_block[1]/2), layer = layers[0] )
+        rect_block_2 = cad.shapes.Rectangle( (width/2, -size_block[1]/2), (width/2 + size_block[0], size_block[1]/2), layer = layers[0] )
+        rect_bridge = cad.shapes.Rectangle( (-size_bridge[0]/2, -size_bridge[1]/2),(size_bridge[0]/2, size_bridge[1]/2) , layer = layers[1])
+        cell = cad.core.Cell('bridge')
+        cell.add(rect_block_1)
+        cell.add(rect_block_2)
+        cell.add(rect_bridge)
+        points = np.array(self.points)
+        spacing = 1/density
+
+        if len(self.points) == 2:
+            rd = ( points[1]-points[0] ) # relative distances between two points
+            if rd[0]!= 0:
+                n = int(abs(rd[0]*density))
+                for j in range(0, n ):
+                    x = points[0][0] + np.sign(rd[0])*(spacing/2. + j*spacing) 
+                    self.add(cell, origin = ( x, points[0][1]), rotation = 90)
+            else:  
+                n = int(abs(rd[1]*density))
+                for j in range(0, n):
+                    y = points[0][1] + np.sign(rd[1])*(spacing/2. + j*spacing) 
+                    self.add(cell, origin = ( points[0][0], y))  
+        else:
+            for i in range(0,len(self.points)-1):
+
+                if i==0 or i==int((len(self.points) -2)):
+                    bends = 1
+                else:
+                    bends = 2
+
+                rd = (points[i+1]-points[i]) # relative distances between two points
+                lx = abs(rd[0]) - bends*self.turn_radius
+                ly = abs(rd[1]) - bends*self.turn_radius 
+                if int(density*lx) >= 1:
+                    n = int(density*lx)
+                    spacing = lx/n
+                    for j in range(0, n):
+                        x = points[i][0] + np.sign(rd[0])*(spacing/2. + bends*self.turn_radius + j*spacing) 
+                        self.add(cell, origin = ( x, points[i][1]), rotation = 90)
+                elif int(density*ly) >= 1:
+                    n = int(density*ly)
+                    spacing = ly/n
+                    for j in range(0,n):
+                        y = points[i][1] + np.sign(rd[1])*(spacing/2. + bends*self.turn_radius + j*spacing) 
+                        self.add(cell, origin = ( points[i][0], y))  
+   
+   
+
+    def add_flux_bias_short(self, radius_rounding_corner = 2, total_length = 60, launcher_length = 30, final_pad_width = 6, final_pad_gap = 23.5, add_skirt = False, skirt_distance = 5, skirt_layer = 91):
+        self.total_length = total_length
+        cad.core.default_layer = self.layer
+        pts = ((0, self.pin/2),\
+                (launcher_length, final_pad_width/2),\
+                (total_length - radius_rounding_corner, final_pad_width/2))
+            
+        # first rounded corner
+        angles = np.linspace(-np.pi/2, 0, 50)
+        pts_temp = np.vstack((np.cos(angles), np.sin(angles))).T*radius_rounding_corner
+        pts_temp = np.add(pts_temp, (total_length - radius_rounding_corner, final_pad_width/2 + radius_rounding_corner))
+        pts = np.vstack((pts, pts_temp))
+        pts = np.vstack((pts, (total_length, final_pad_width/2+final_pad_gap-radius_rounding_corner)))
+
+        # second rounded corner
+        angles = np.linspace(0, np.pi/2, 50)
+        pts_temp = np.vstack((np.cos(angles), np.sin(angles))).T*radius_rounding_corner
+        pts_temp = np.add(pts_temp, (total_length-radius_rounding_corner, final_pad_width/2 + final_pad_gap - radius_rounding_corner))
+        pts = np.vstack((pts, pts_temp))
+        pts = np.vstack((pts, (launcher_length, final_pad_width/2 + final_pad_gap),
+                             (0, self.pin/2+self.gap)))
+        top_part = cad.core.Boundary(pts)
+
+        # mirror top part
+        bottom_part = cad.utils.reflect(top_part, 'x')
+        delta = (self.points[-1] - self.points[-2])
+
+        if delta[0] == 0:
+            if delta[1] < 0:
+                angle = -90
+            else:
+                angle = 90
+        elif delta[1] == 0:
+            if delta[0] < 0:
+                angle = 180
+            else: 
+                angle = 0
+    
+        cell = cad.core.Cell('flux_bias')
+        cell.add([ bottom_part, top_part] )
+        self.add(cell, self.points[-1], angle)
+       
+        if add_skirt == True:
+            pts = [(0,skirt_distance+self.gap+self.pin/2.),
+                 (launcher_length, final_pad_width/2 + final_pad_gap+skirt_distance),
+                 (total_length, final_pad_width/2 + final_pad_gap+skirt_distance),
+                 (total_length, -(final_pad_width/2 + final_pad_gap+skirt_distance)),
+                 (launcher_length, -(final_pad_width/2 + final_pad_gap+skirt_distance)),
+                 (0, -skirt_distance - self.gap -self.pin/2)]
+         
+            skirt = cad.core.Cell('skirt')  
+            skirt.add( cad.core.Boundary(pts, layer = skirt_layer))
+            self.add(skirt, self.points[-1], angle)
+
+
+
+    def add_mask( self, width , layer=91):
+        """
+        this functions returns a mask following the centreline of  the CPW. This can also be used as a skirt 
+        for the holyeground
+        """
+        cad.core.default_layer = layer
+        points = self.points
+        turn_radius = self.turn_radius
+
+        if len(points) == 2:
+            self.add( line_polygon(points[0], points[1], width))
+            self.length += norm(points[1]-points[0])
+        else:
+            n_last = len(points)-1
+            sec = [points[0]]
+            for i in range(1,n_last):
+                p = np.array(points[i])
+                p_before = np.array([points[i][0]+turn_radius*sign(points[i-1][0]-points[i][0]),points[i][1]+turn_radius*sign(points[i-1][1]-points[i][1])])
+                p_after = np.array([points[i][0]+turn_radius*sign(points[i+1][0]-points[i][0]),points[i][1]+turn_radius*sign(points[i+1][1]-points[i][1])])
+                curve_center = p_after + p_before - p
+                angle_i = angle(p_before - curve_center)
+                angle_delta = angle(p_after - curve_center)-angle_i
+
+                if angle_delta < -180.:
+                    angle_delta+=360.
+                if angle_delta > 180.:
+                    angle_delta-=360.
+
+                sec.append(p_before)
+                self.add(line_polygon(sec[0], sec[1],  width))
+                angles = np.linspace(angle_i,angle_i+angle_delta, 199).T *np.pi/180.
+                self.add(arc_polygon(curve_center, turn_radius,width,\
+                                    initial_angle=angle_i, final_angle=angle_i+angle_delta, number_of_points = 199))
+                sec=[p_after]
+            sec.append([points[n_last][0],points[n_last][1]])
+            self.add( line_polygon(sec[0], sec[1], width))
+        
 
 class SpiralInductor(cad.core.Cell):
     """docstring for SpiralInductor"""
@@ -749,7 +951,7 @@ class SpiralInductor(cad.core.Cell):
             self.C = self.do*22.5e-15/67.
         else:
             self.C = 1.
-            print 'No formula for C'
+            print('No formula for C')
         self.Lk = self.length/self.line_width*kinetic_inductance
         self.self_resonance = 1./np.sqrt((self.Lk+self.Lg)*self.C)/2./np.pi
 
@@ -757,6 +959,7 @@ class SpiralInductor(cad.core.Cell):
 
         return 1./np.sqrt((self.Lk+self.Lg)*(self.C+C))/2./np.pi
         
+
 class SpiralProbe(cad.core.Cell):
     """docstring for SpiralProbe"""
     def __init__(self, 
@@ -836,11 +1039,6 @@ class SpiralProbe(cad.core.Cell):
         self.add(overlap_square_top)
 
 
-
-
-       
-        
-
 class FourPointProbe(cad.core.Cell):
     """
     Creates a four point probe setup
@@ -910,7 +1108,6 @@ class FourPointProbe(cad.core.Cell):
         self.add(labelcell)
 
 
-
 class MeanderingInductor(MeanderingLine):
     """docstring for MeanderingLine"""
 
@@ -926,7 +1123,7 @@ class MeanderingInductor(MeanderingLine):
         pitch = cond_spacing+cond_width
 
         if n_legs%2==1:
-            print "Meandering inductors with odd number of legs not yet implemented"
+            print("Meandering inductors with odd number of legs not yet implemented")
             return
 
         meander = []
@@ -945,7 +1142,6 @@ class MeanderingInductor(MeanderingLine):
         layer = layer,
         path = True,
         name=name)
-
 
 
 class MeanderAndDrum(cad.core.Cell):
@@ -1012,3 +1208,347 @@ class MeanderAndDrum(cad.core.Cell):
             name = name+"_m4"))
         if label !=None:
             self.add(cad.shapes.Label(label, 20, [meander_to_ground/2.,30.], layer=base_layer))
+
+
+class interdigitated_cap(cad.core.Cell):
+    """
+    Make a cell with interdigitated cap surrounded by a dielectric with width set by 'dielectric'.  A skirt can be added by setting 'add_skirt' to True. This class also contains a function which adds a squid inside the dielectric. 
+    
+    """
+    def __init__(self,
+                 fingers = 5,
+                 finger_length = 90,
+                 gap = 5,
+                 radius = 4,
+                 plate_width = 10,
+                 plate_height = 315,
+                 dielectric = 30, # thickness of surrounding dielectric layer
+                 pin = 12,
+                 layer = 1,
+                 add_skirt = False,
+                 skirt_distance = 5,
+                 skirt_layer = 91,
+                 name = 'interdigitated_cap'
+                ):
+
+        super(interdigitated_cap, self).__init__(name)
+        cad.core.default_layer = layer
+        self.width = gap + finger_length + 2*plate_width + 2*dielectric
+        self.height = plate_height + 2*dielectric
+        self.fingers = fingers
+        self.dielectric = dielectric
+        self.plate_width = plate_width
+        self.gap = gap
+        self.layer = layer
+        self.skirt = add_skirt
+        self.skirt_layer = skirt_layer
+        self.skirt_distance = skirt_distance
+         
+        # first make outerdielectric
+        cell = cad.core.Cell('dielectric')
+        dielec_h = dielectric + plate_height/2. - pin/2.
+        dielec_w = 2*(dielectric + plate_width) + gap + finger_length
+        contourpoints = [ (0, dielec_h ), (0,0), (dielec_w, 0), (dielec_w, dielec_h), (dielec_w-dielectric, dielec_h),\
+                         (dielec_w-dielectric, dielectric),
+                          (dielectric, dielectric), (dielectric, dielec_h) ]
+        self.contourpoints = contourpoints
+        self.dielec_w = dielec_w
+        self.dielec_h = dielec_h
+        
+        lower_half = cad.core.Boundary( contourpoints )
+        cell.add(lower_half)
+        self.add(cell)
+        self.add( cell, origin = (dielec_w, 2*dielec_h+pin), rotation = 180) # rotate lowerhalf and place above lowerhalf
+        
+        # generate intern dielectric
+        finger_height = (plate_height - (2.*fingers-1.)*gap )/(2.*fingers) # height of metal fingers
+        points = [[0,0]]
+        sign = 1
+
+        for i in range(0, 4*fingers-1):
+            if i%2 == 0:
+                if (i == 0 or i == 4*fingers-2):
+                    add = [points[i][0], points[i][1] + finger_height + gap/2.] 
+                else:
+                    add = [points[i][0], points[i][1] + finger_height + gap]
+            if i%2 == 1:
+                add = [points[i][0] + sign*finger_length,  points[i][1] ]
+                sign = -1*sign
+            points.append(add)
+    
+        inside = MeanderingLine(points, turn_radius = radius, line_width = gap)  
+        self.add( inside, (dielectric+plate_width+gap/2., dielectric) )
+
+        if add_skirt == True:
+            points = [(-skirt_distance, -skirt_distance), (-skirt_distance, self.height + skirt_distance), \
+                      (self.width + skirt_distance, self.height + skirt_distance), (self.width + skirt_distance, -skirt_distance)]
+            skirt = cad.core.Boundary(points ,layer = skirt_layer)
+            self.add(skirt)
+
+    
+    def add_squid(self, thickness=2, width=20, height=16, rotate = False, draw_junctions = False,\
+            junction_dict = {}, angle=0):
+        """
+        This function adds a squid inside the dielectric. The junctions are drawn parallel to the short side of the capacitor. By setting 'rotate' to TRUE, the junctions are drawn parallel to the long side of the capacitor. The dictionairy is used for setting the dimension for the junctions itself. The junctions are drawn with the finger pointing to the east. This can be corrected with the angle parameter if nessecary. 
+        """
+
+
+        # create new dielectric for lower part
+        if self.skirt == False:          # remove lower dielectric 
+            self.remove(self.elements[0])
+        else:
+            self.remove(self.elements[1])
+
+        if rotate == True: # when the loop is rotated, it must also be moved a small distance to the left
+            height_old = height
+            height = height_old - thickness
+
+        cad.core.default_layer = self.layer
+        delta = self.plate_width - (thickness + (width-self.gap)/2.)
+        lower_half = cad.core.Cell('lower_half')
+        self.delta = delta
+        contourpoints = [ (0, self.dielec_h), (0, 67.5), (self.dielectric + delta-10, 67.5), (self.dielectric + delta -10, 0),\
+                        (self.dielec_w,0), (self.dielec_w, self.dielec_h), (self.dielec_w - self.dielectric, self.dielec_h),\
+                        (self.dielec_w - self.dielectric, self.dielectric), (self.dielectric+2*thickness+width + delta, self.dielectric),\
+                        (self.dielectric + 2*thickness+width+delta, self.dielectric - 2*thickness - height), \
+                         (self.dielectric + delta, self.dielectric - 2*thickness - height),\
+                         (self.dielectric + delta, self.dielectric), (self.dielectric, self.dielectric),
+                         (self.dielectric, self.dielec_h)]
+        
+        contour = cad.core.Boundary(contourpoints)
+        lower_half.add(contour)
+        self.add(lower_half)
+
+        if self.skirt == True: # redraw skirt
+            self.remove(self.elements[0]) # remove old skirt
+            thick = self.skirt_distance
+            points = [ ( self.dielectric + self.delta - 10 - thick, 0),
+                      ( self.dielectric + self.delta - 10 - thick, 67.5-thick),\
+                      (-thick, 67.5-thick), (-thick, self.height + thick), \
+                      (self.width + thick, self.height + thick), (self.width + thick, -thick),\
+                      (self.dielectric + self.delta - 10 - thick, -thick)  ]
+            skirt = cad.core.Boundary(points ,layer = self.skirt_layer)
+            self.add(skirt)
+
+
+        # generate loop
+        squid = cad.core.Cell('squid')
+        if rotate == True: # for rotation by 90 degrees, the long and short side of the loop are switched
+            width_old = width
+            height = width_old
+            width = height_old
+
+        loop = cad.core.Boundary( [(-width/2., -height/2.), (-width/2., height/2.), (-1.5, height/2),
+                                   (-1.5, height/2. + thickness/2. - 0.2), (-2.7, height/2. + thickness/2. -0.2),
+                                   (-2.7, height/2. + thickness/2. + 0.2), (-1.5, height/2. + thickness/2 + 0.2),
+                                   (-1.5, height/2. + thickness), (1.5, height/2. + thickness),
+                                   (1.5, height/2. + thickness/2. + 0.2), (2.7, height/2. + thickness/2. + 0.2),
+                                   (2.7, height/2. + thickness/2. - 0.2), (1.5, height/2. + thickness/2. - 0.2), 
+                                   (1.5, height/2.), (width/2., height/2.),
+                                   (width/2., -height/2.), (1.5, -height/2),
+                                   (1.5, -height/2. - thickness/2. + 0.2), (2.7, -height/2. - thickness/2. + 0.2),
+                                   (2.7, -height/2. - thickness/2. - 0.2), (1.5, -height/2. - thickness/2 - 0.2),
+                                   (1.5, -height/2. - thickness), (-1.5, -height/2. - thickness),
+                                   (-1.5, -height/2. - thickness/2. - 0.2), (-2.7, -height/2. - thickness/2. - 0.2),
+                                   (-2.7, -height/2. - thickness/2. + 0.2), (-1.5, -height/2.  -thickness/2. + 0.2), 
+                                   (-1.5, -height/2.)] )
+        squid.add(loop)
+       
+        if draw_junctions == True:
+            junction_gap = junction_dict.get('junction_gap', 0.12)
+            junction_finger_width = junction_dict.get('junction_finger_width', [0.01, 0.02])
+            junction_finger_height = junction_dict.get('junction_finger_height', 0.2)
+            contact_pad_width = junction_dict.get('contact_pad_width', 1.0)
+            contact_pad_height = junction_dict.get('contact_pad_height', 2.0)
+            contact_pad_overlap = junction_dict.get('contact_pad_overlap', 1.8)
+            contact_distance = junction_dict.get('contact_distance', 3)
+            junction_layer = junction_dict.get('junction_layer', 5)
+    
+            junctions = [cad.core.Cell('junction_1'), cad.core.Cell('junction_2')]
+            cad.core.default_layer = junction_layer
+
+            # derived stuff
+            junction_bottom_width = [junction_finger_width[0] + 0.500, junction_finger_width[1] + 0.500]
+            finger_lead_height = 0.5*contact_distance + contact_pad_overlap \
+                - contact_pad_height - junction_finger_height -0.5*junction_gap
+            lead_bottom_height = 0.5*contact_distance + contact_pad_overlap \
+                - contact_pad_height - 0.5*junction_gap
+    
+            # upper part of the junction
+            juction_fingers = [cad.shapes.Rectangle((-0.5*junction_finger_width[0], 0), (0.5*junction_finger_width[0], junction_finger_height)),\
+                               cad.shapes.Rectangle((-0.5*junction_finger_width[1], 0), (0.5*junction_finger_width[1], junction_finger_height))]
+            juction_fingers[0].translate((0, 0.5*junction_gap))
+            juction_fingers[1].translate((0, 0.5*junction_gap))
+
+            juction_finger_leads= [symmetric_trapezoid(  junction_finger_width[0], contact_pad_width, finger_lead_height),\
+                                   symmetric_trapezoid(  junction_finger_width[1], contact_pad_width, finger_lead_height)]
+            juction_finger_leads[0].translate( (0, 0.5*junction_gap+junction_finger_height))
+            juction_finger_leads[1].translate( (0, 0.5*junction_gap+junction_finger_height))
+            
+            upper_contact_pad = cad.shapes.Rectangle(
+                (-0.5*contact_pad_width, 0),
+                (0.5*contact_pad_width, contact_pad_height))
+            upper_contact_pad.translate(
+                (0, 0.5*junction_gap+junction_finger_height
+                    + finger_lead_height))
+    
+            # bottom part
+            juction_bottom = [symmetric_trapezoid( junction_bottom_width[0], contact_pad_width, -lead_bottom_height),\
+                              symmetric_trapezoid( junction_bottom_width[1], contact_pad_width, -lead_bottom_height)]
+            juction_bottom[0].translate((0, -0.5*junction_gap))
+            juction_bottom[1].translate((0, -0.5*junction_gap))
+
+            lower_contact_pad = cad.shapes.Rectangle(
+                (-0.5*contact_pad_width, 0),
+                (0.5*contact_pad_width, -contact_pad_height))
+            lower_contact_pad.translate((0, -0.5*junction_gap - lead_bottom_height))
+    
+            # adding it together
+            junctions[0].add(cad.core.Elements((juction_fingers[0], juction_finger_leads[0], upper_contact_pad, lower_contact_pad, juction_bottom[0])))
+            junctions[1].add(cad.core.Elements((juction_fingers[1], juction_finger_leads[1], upper_contact_pad, lower_contact_pad, juction_bottom[1])))
+    
+        # put everything together
+        if rotate == True:
+            width = width_old
+            height = height_old
+            self.add(squid, (self.dielectric+thickness+width/2. + delta, self.dielectric  - height/2.), rotation = 90)
+            if draw_junctions == True:
+                self.add(junctions[0],  (self.dielectric+1.5*thickness+width + delta, self.dielectric - height/2.), rotation = angle)
+                self.add(junctions[1],  (self.dielectric+ 0.5*thickness + delta, self.dielectric  -height/2. ), rotation = angle)
+
+        else:
+            self.add(squid, (self.dielectric+thickness+width/2. + delta, self.dielectric - thickness - height/2.))
+            if draw_junctions == True:
+                self.add(junctions[0], (self.dielectric+thickness+width/2. + delta, self.dielectric - height - 1.5 * thickness), rotation = 90 + angle)
+                self.add(junctions[1], (self.dielectric+thickness+width/2. + delta, self.dielectric - 0.5*thickness), rotation = 90 + angle)
+
+
+class Shunt_Cap(cad.core.Cell):
+    """
+    Make a cell with shunt capacitor.  A skirt can be added by setting 'add_skirt' to True.
+    """
+    def __init__(self,
+                centerwidth=12,gapwidth=5,shunt=(208,520,268+10,841+10,268,841),
+                layer_bottom=1,layer_ins=2,layer_top=3,layer_fill=5,fill_gaps=True,
+                add_skirt=True,skirt_distance=5,layer_skirt=91,
+                shunt_type='A',
+                name = 'Shunt_Cap',
+                pos=(0,0)
+                ):
+
+        super(Shunt_Cap, self).__init__(name)
+        self.centerwidth=centerwidth
+        self.gapwidth=gapwidth
+        self.shunt=shunt
+        self.layer_bottom=layer_bottom
+        self.layer_ins=layer_ins
+        self.layer_top=layer_top
+        self.layer_fill = layer_fill
+
+        x0,y0=pos[0],pos[1]
+        shuntbase = self.gen_shunt_base((x0,y0))
+        shuntins = self.gen_shunt_ins((x0,y0),fill_gaps=fill_gaps,shunt_type=shunt_type)
+        shunttop = self.gen_shunt_top((x0,y0),shunt_type=shunt_type)
+        
+        [self.add(toadd) for toadd in [shuntbase, shuntins, shunttop]]
+
+        if add_skirt==True:
+            bbx, bby = self.bounding_box
+            self.add(cad.shapes.Rectangle((bbx[0]-skirt_distance,bbx[1]-skirt_distance),(bby[0]+skirt_distance,bby[1]+skirt_distance),layer=layer_skirt))
+        
+
+    def gen_shunt_base(self,pos):
+        """
+        Base layer for shunt
+        """
+        x0 = pos[0]
+        y0 = pos[1]
+
+        shuntbase = cad.core.Cell('shuntbase')
+        shuntpoints = [(x0,y0+self.centerwidth/2.),(x0,y0+self.shunt[1]/2.+self.gapwidth/2.),
+                    (x0+self.shunt[0]+self.gapwidth,y0+self.shunt[1]/2.+self.gapwidth/2.),(x0+self.shunt[0]+self.gapwidth,y0+self.centerwidth/2.)]
+        shunt1 = cad.core.Path(shuntpoints,self.gapwidth,layer=self.layer_bottom)
+        shunt11 = cad.utils.reflect(shunt1,'x',origin=(0,y0))
+        shuntbase.add(shunt1)
+        shuntbase.add(shunt11)
+
+        print('Area of shunt base: {} um2'.format(self.shunt[0]*self.shunt[1]))
+
+        return shuntbase
+
+    def gen_shunt_ins(self,pos,fill_gaps,shunt_type):
+        """
+        Returns insulating slab for shunt capacitors
+        """
+        x0 = pos[0]+self.gapwidth/2-(self.shunt[2]-self.shunt[0])/2
+        y0 = pos[1]-self.shunt[3]/2
+
+        shuntins = cad.core.Cell('shuntins')
+        if shunt_type=='A':
+            shuntpoints = [(x0,y0),
+                        (x0+self.shunt[2],y0+self.shunt[3])]
+            shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_ins)
+            shuntins.add(shunt)
+            print('Area of shunt dielectric: {} um2'.format(self.shunt[2]*self.shunt[3]))
+        elif shunt_type=='B':
+            dy = self.centerwidth/2+self.gapwidth+self.centerwidth
+            dx = (self.shunt[4]-self.shunt[0])/2
+            shuntpoints = [(x0,y0),(x0,y0+self.shunt[3]/2-dy),(x0+dx,y0+self.shunt[3]/2-dy),(x0+dx,y0+self.shunt[3]/2),
+                            (x0+self.shunt[2]/2,y0+self.shunt[3]/2),(x0+self.shunt[2]/2,y0)]
+            shunt1 = cad.core.Boundary(shuntpoints, layer=self.layer_ins)
+            shunt2 = cad.utils.reflect(shunt1,'y',origin=(x0+self.shunt[2]/2,y0+self.shunt[3]/2))
+            shunt3 = cad.utils.reflect(shunt1,'x',origin=(x0+self.shunt[2]/2,y0+self.shunt[3]/2))
+            shunt4 = cad.utils.rotate(shunt1,180,center=(x0+self.shunt[2]/2,y0+self.shunt[3]/2))
+            for toadd in [shunt1,shunt2,shunt3,shunt4]:
+                shuntins.add(toadd)
+            print('Area of shunt dielectric: {} um2'.format(self.shunt[2]*self.shunt[3]-dx*dy))
+        else:
+            return KeyError('Only available shunt_type at this point are "A" and "B".')
+        # this is for covering the gaps with additional dielectric to prevent shorting
+        # 02-07-2018
+        if fill_gaps:
+            y0 = pos[1]+self.gapwidth/2
+            dx=0
+            if shunt_type=='B':
+                dx = (self.shunt[4]-self.shunt[0])/2
+            dielgaps = [(x0+dx,y0+self.centerwidth/2.),(pos[0],y0+self.centerwidth/2.),(pos[0],y0+self.shunt[1]/2),
+                        (pos[0]+self.shunt[0]+self.gapwidth,y0+self.shunt[1]/2),(pos[0]+self.shunt[0]+self.gapwidth,y0+self.centerwidth/2.),
+                        (pos[0]+self.shunt[0]+self.gapwidth+(pos[0]-x0)-dx,y0+self.centerwidth/2.)]
+            shunt1 = cad.core.Path(dielgaps,self.gapwidth+2,layer=self.layer_fill)
+            shunt11 = cad.utils.reflect(shunt1,'x',origin=(0,y0-self.gapwidth/2))
+            shuntins.add(shunt1)
+            shuntins.add(shunt11)
+        return shuntins
+
+    def gen_shunt_top(self,pos,shunt_type):
+        """
+        Returns top plate for shunt capacitors
+        """
+        x0 = pos[0]+self.gapwidth/2+self.shunt[0]/2-self.shunt[4]/2
+        y0 = pos[1]-self.shunt[5]/2
+
+        shunttop = cad.core.Cell('shunttop')
+        if shunt_type=='A':
+            shuntpoints = [(x0,y0),
+                        (x0+self.shunt[4],y0+self.shunt[5])]
+            shunt = cad.shapes.Rectangle(shuntpoints[0], shuntpoints[1], layer=self.layer_top)
+            
+            shunttop.add(shunt)
+            print('Area of shunt top: {} um2'.format(self.shunt[4]*self.shunt[5]))
+
+        elif shunt_type=='B':
+            dy = self.centerwidth/2+self.gapwidth+self.centerwidth+self.gapwidth
+            dx = (self.shunt[4]-self.shunt[0])/2
+            shuntpoints = [(x0,y0),(x0,y0+self.shunt[5]/2-dy),(x0+dx,y0+self.shunt[5]/2-dy),(x0+dx,y0+self.shunt[5]/2),
+                            (x0+self.shunt[4]/2,y0+self.shunt[5]/2),(x0+self.shunt[4]/2,y0)]
+            shunt1 = cad.core.Boundary(shuntpoints, layer=self.layer_top)
+            shunt2 = cad.utils.reflect(shunt1,'y',origin=(x0+self.shunt[4]/2,y0+self.shunt[5]/2))
+            shunt3 = cad.utils.reflect(shunt1,'x',origin=(x0+self.shunt[4]/2,y0+self.shunt[5]/2))
+            shunt4 = cad.utils.rotate(shunt1,180,center=(x0+self.shunt[4]/2,y0+self.shunt[5]/2))
+            for toadd in [shunt1,shunt2,shunt3,shunt4]:
+                shunttop.add(toadd)
+            print('Area of shunt top: {} um2'.format(self.shunt[4]*self.shunt[5]-dx*dy))
+        else:
+            return KeyError('Only available shunt_type at this point are "A" and "B".')
+
+        return shunttop

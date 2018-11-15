@@ -1,6 +1,6 @@
 import gdsCAD as cad
-from junctions import JJunctions
-import utilities
+from .junctions import JJunctions
+from . import utilities
 import collections
 
 

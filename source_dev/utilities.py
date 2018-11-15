@@ -1,8 +1,8 @@
 import gdsCAD as cad
 import shapely
+from shapely import geometry
 import numpy as np
 import collections
-#import gdspy
 
 def length_path(points):
 	length=0
@@ -62,7 +62,7 @@ def make_rounded_edges(rectangle, radius, dict_corners):
 	
 	rectangle_shapely = poly_to_shapely(rectangle)
 	rounded_rect = rectangle_shapely
-	for key, value in dict_corners.iteritems():
+	for key, value in dict_corners.items():
 		if key[:2] == 'BL':
 			rot = 0
 		elif key[:2] == 'BR':
@@ -257,5 +257,16 @@ def probe_pad(position, orientation,layer = 1, taper_start_width = 100, taper_en
 	return shape
 
 
-# if __name__ == '__main__':
-# 	probe_bad([20,20],'down').show()
+def symmetric_trapezoid(bottom_width, top_width, height, layer=1):
+
+    trapezoid = cad.core.Boundary(
+        [(-0.5*bottom_width, 0),
+         (-0.5*top_width, height),
+         (0.5*top_width, height),
+         (0.5*bottom_width, 0),
+         (-0.5*bottom_width, 0),
+         ], layer=layer)
+
+    return trapezoid
+if __name__ == '__main__':
+ 	probe_bad([20,20],'down').show()

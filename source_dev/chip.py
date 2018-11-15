@@ -16,7 +16,8 @@ class Base_Chip(cad.core.Cell):
     Options for label location: By default slightly to the right of x=0 and 700um below upper edge. Can be adjusted by labelloc=(xpos,ypos)
     Options for label linewidth: labelwidth=5 by default
     """
-    def __init__(self, name, xdim=1000, ydim=1000, frame=True, label=True, wafer=False, labelloc=(0,0), labelwidth=5):
+    def __init__(self, name, xdim=1000, ydim=1000, frame=True, label=True, wafer=False, labelloc=(0,0), labelwidth=5, boxwidth=None,
+        layer_label=20, layer_box=21, layer_alignment=22, layer_testpads=23):
         
         super(Base_Chip, self).__init__(name)
         self.name = name
@@ -25,16 +26,19 @@ class Base_Chip(cad.core.Cell):
         self.wafer = wafer
         wafer_d = [0, 25.4e3, 50.8e3, 76.2e3, 100e3, 125e3, 150e3]  # wafer diameters in um
         
-        if xdim < 1001 and ydim < 1001:
-            self.boxwidth = 10
+        if not boxwidth:
+            if xdim < 1001 and ydim < 1001:
+                self.boxwidth = 10
+            else:
+                self.boxwidth = 100
         else:
-            self.boxwidth = 100
+            self.boxwidth = boxwidth
         
             
-        self.layer_label = 20
-        self.layer_box = 21
-        self.layer_alignment = 22
-        self.layer_testpads = 23
+        self.layer_label = layer_label
+        self.layer_box = layer_box
+        self.layer_alignment = layer_alignment
+        self.layer_testpads = layer_testpads
         
         if frame==True or label==True:
             if wafer==False:
@@ -50,7 +54,7 @@ class Base_Chip(cad.core.Cell):
         Generate chip with dimensions xdim,ydim
         """
         box=cad.shapes.Box((-self.xdim/2, -self.ydim/2), (self.xdim/2, self.ydim/2),
-                         width=self.boxwidth, layer =self.layer_box)
+                         width=self.boxwidth, layer=self.layer_box)
 
         date = time.strftime("%d/%m/%Y")
         # The label is added 100 um on top of the main cell
@@ -123,25 +127,34 @@ class Base_Chip(cad.core.Cell):
         self.add(thetext)
 
 
-    def add_ebpg_marker(self, pos=(-3310,-1560), size=20, spacing=200, number=4, duplicate=True):
+    def add_ebpg_marker(self, pos=(-3310,-1560), size=20, spacing=200, number=4, duplicate=True, layer=None, add_skirt=True, skirt_margin=50, skirt_layer=91):
         """
         4 ebeam marker each 20um rectangular and 200um spaced apart
         params pos : tuple of positions
         number: How many markers (up to four)
         duplicate: set of four groups or just one at this position
+        layer: by default 22 self.layer_alignment
         """
+        if layer==None:
+            layer=self.layer_alignment
         marker = [cad.core.Cell('EBEAM')] * 4
         x = [pos[0], pos[0] + spacing, pos[0] + spacing, pos[0]]
         y = [pos[1], pos[1], pos[1] + spacing, pos[1] + spacing]
         for i in range(number):
             box = cad.shapes.Rectangle((x[i]-size/2,y[i]-size/2),(x[i]+size/2,y[i]+size/2),
-                                        layer = self.layer_alignment)
+                                        layer = layer)
             marker[0].add(box)
         if duplicate==True:
             marker[1] = cad.core.CellReference(marker[0], origin=(-2*pos[0]-spacing,-2*pos[1]-spacing))
             marker[2] = cad.core.CellReference(marker[0], origin=(0,-2*pos[1]-spacing))
             marker[3] = cad.core.CellReference(marker[0], origin=(-2*pos[0]-spacing,0))
+        if add_skirt:
+            for mm in marker:
+                bbx,bby = mm.bounding_box
+                self.add(cad.shapes.Rectangle((bbx[0]-skirt_margin,bbx[1]-skirt_margin),(bby[0]+skirt_margin,bby[1]+skirt_margin),layer=skirt_layer))
+
         self.add(marker)
+        # return [mm.bounding_box for mm in marker]
 
 
     def save_to_gds(self, loc = 'examples/', save = True, show = False):
@@ -168,6 +181,7 @@ class Base_Chip(cad.core.Cell):
             box = cad.shapes.Rectangle((x[i]-dim[0]/2,y[i]-dim[1]/2),(x[i]+dim[0]/2,y[i]+dim[1]/2), layer = self.layer_testpads)
             pads.add(box)
         self.add(pads)
+        return pads.bounding_box
 
 
     def add_photolitho_marker(self, pos=(0,0), layer=(1,2)):
@@ -179,6 +193,7 @@ class Base_Chip(cad.core.Cell):
         amarks = cad.core.CellReference(amarks0,origin = pos)
         marker.add(amarks)
         self.add(amarks)
+        return marker.bounding_box
     
     
     def add_photolitho_vernier(self, pos=(-500,-500), layer=(1,2)):
@@ -190,7 +205,8 @@ class Base_Chip(cad.core.Cell):
         vmarks = cad.core.CellReference(vmarks0).translate(pos)
         verniers.add(vmarks)
         self.add(verniers)
-        
+        return verniers.bounding_box
+
         
     def add_dicing_marker(self, pos=(0,0), hor=True, vert=True, span=False, length=1000):
         """
@@ -218,8 +234,9 @@ class Base_Chip(cad.core.Cell):
                 marker.add(vmarks)
 
         self.add(marker)
+        return marker.bounding_box
     
-    def add_cross_single(self,pos=(0,0),dim=(400,40),clayer=5):
+    def add_cross_single(self,pos=(0,0),dim=(500,50),clayer=5):
         """
         Add single cross for dicing
         """
@@ -231,9 +248,10 @@ class Base_Chip(cad.core.Cell):
         marker.add(marker1)
         marker.add(marker2)
         self.add(marker)
+        return marker.bounding_box
 
     
-    def add_cross_corners(self,dim=(400,40),clayer=5):
+    def add_cross_corners(self,dim=(500,50),clayer=5):
         """
         Add crosses in the corners for dicing
         """
@@ -247,8 +265,9 @@ class Base_Chip(cad.core.Cell):
         markerf3 = cad.core.CellReference(marker, origin=(self.xdim/2,-self.ydim/2))
         markerf4 = cad.core.CellReference(marker, origin=(self.xdim/2,self.ydim/2))
         [self.add(toadd) for toadd in [markerf1, markerf2, markerf3, markerf4]]
+        return marker.bounding_box
         
-    def add_corners(self,dim=(400,40),clayer=5):
+    def add_corners(self,dim=(500,50),clayer=5):
         """
         Add corners for dicing
         """
@@ -262,15 +281,16 @@ class Base_Chip(cad.core.Cell):
         markerf3 = cad.core.CellReference(marker, origin=(self.xdim/2,-self.ydim/2),rotation=90)
         markerf4 = cad.core.CellReference(marker, origin=(self.xdim/2,self.ydim/2),rotation=180)
         [self.add(toadd) for toadd in [markerf1, markerf2, markerf3, markerf4]]
+        return marker.bounding_box
 
-    '''       
+         
     def add_TUlogo(self, pos=(0,100)):
         """
         *** BROKEN
         Issue with dxfImport
         """
         # logo is added 100um below bottom edge of chip
-        logo = cad.core.DxfImport('examples/cad_files/TU_Delft_logo_Black.dxf',scale=1.0)
+        logo = cad.core.DxfImport('TU_Delft_logo_Black.dxf',scale=1.0)
         #logo.layer=self.layer_label
         self.add(logo)
-    '''
+    

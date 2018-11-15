@@ -12,11 +12,6 @@ inductor = SpiralInductor(
         coil_number = 120,
         line_width = 0.25,
         spacing = 0.25,kinetic_inductance = 0.)
-
-print inductor.Lg*1e9+inductor.Lk*1e9
-# print inductor.C
-# print inductor.self_resonance/1e9
-# print inductor.length
 inductor.show()
 
 

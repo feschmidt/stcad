@@ -1,6 +1,6 @@
 import numpy as np
 import gdsCAD as cad
-import utilities as utils
+from . import utilities as utils
 
 class JPA():
     """
