@@ -796,7 +796,7 @@ class SpiralProbe(cad.core.Cell):
             taper_end_width = line_width, 
             taper_length = taper_length, 
             line_length = line_width))
-        self.add(SpiralInductor(  
+        self.spiral = SpiralInductor(  
             exterior,
             coil_number,
             line_width ,
@@ -810,7 +810,8 @@ class SpiralProbe(cad.core.Cell):
             kinetic_inductance,
             patch ,
             patching_layer ,
-            name=name+'_spiral'))
+            name=name+'_spiral')
+        self.add(self.spiral)
 
         # connect spiral with left probe
         points = [[exterior+tail_length,0]]
