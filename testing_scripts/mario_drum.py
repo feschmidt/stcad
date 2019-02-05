@@ -5,7 +5,7 @@ import gdsCAD as cad
 
 chipsize = 50
 chip = Base_Chip('drum', chipsize, chipsize,label=False)
-inductor = Drum(base_layer = 1,
+drum = Drum(base_layer = 1,
 					sacrificial_layer = 2 ,
 					top_layer = 3,
 					hole_layer = 4,
@@ -22,5 +22,5 @@ inductor = Drum(base_layer = 1,
 					hole_distance_to_edge = 0.5,
 					split_electrode = False,
 					name = '')
-chip.add_component(inductor, (0,0))
+chip.add_component(drum, (0,0))
 chip.save_to_gds(show=False, save=True,loc='')
