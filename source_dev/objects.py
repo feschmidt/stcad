@@ -701,7 +701,7 @@ class CPW(cad.core.Cell):
             p_0 = self.points[-2]
             p_1 = self.points[-1]
         else:
-            raise ValueError("First argumnet should be either 'beginning' or 'b' or 'end' or 'e'")
+            raise ValueError("First argument should be either 'beginning' or 'b' or 'end' or 'e'")
         cad.core.default_layer=self.layer
         # normalize vector
         vec = p_1-p_0
@@ -713,6 +713,17 @@ class CPW(cad.core.Cell):
             cad.core.default_layer=skirt_layer
             self.add(line_polygon(p_1, p_1+vec, self.gap*2 + self.pin + 2*skirt_distance))
             cad.core.default_layer = self.layer
+
+    def add_zigzag(self,fingerlength=1,fingerwidth=0.6,gapwidth=0.5):
+        # calculate number of fingers
+        x = int(np.ceil((self.pin-fingerwidth)/(fingerwidth+gapwidth)))
+        # calculate new gapwidth
+        gapwidth = (self.pin-(x+1)*fingerwidth)/x
+        cad.core.default_layer=self.layer
+        x0,y0 = self.points[-1]
+        for n in range(-x//2,x//2):
+            newy = y0+(n+1)*(fingerwidth+gapwidth)
+            self.add(cad.core.Path([(x0-fingerlength,newy),(x0,newy)],width=gapwidth))
 
             
             
