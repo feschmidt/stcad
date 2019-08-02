@@ -1,6 +1,7 @@
 import numpy as np
 import gdsCAD as cad
 import time
+import os
        
 
 class Base_Chip(cad.core.Cell):
@@ -157,14 +158,17 @@ class Base_Chip(cad.core.Cell):
         # return [mm.bounding_box for mm in marker]
 
 
-    def save_to_gds(self, loc = 'examples/', save = True, show = False):
+    def save_to_gds(self, loc = None, save = True, show = False):
         """
         Save and show gds file
-        Default location in testing/, can be adjusted via loc
+        Default location is the script path
         """
         layout = cad.core.Layout('MAIN_CHIP')
         layout.add(self)
         if save:
+            if loc is None:
+                loc = os.getcwd()
+            print(loc)
             layout.save(loc + self.name + '.gds')
         if show:
             layout.show()

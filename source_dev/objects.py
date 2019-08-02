@@ -143,14 +143,14 @@ class hex_array_of_holes(cad.core.Cell):
         half_height = np.sqrt(base_width**2/4.-base_width**2/16.)-margin
         pitch_vertical = half_height/float((n_holes+1)/2-1)
         if skip_some == False:
-            for i in range((n_holes+1)/2):
+            for i in range(int((n_holes+1)/2)):
                 y = i*pitch_vertical
                 x_start = (base_width)/2.-margin*2./np.sqrt(3)-(y)/np.tan(np.pi/3.)
                 x_array = np.linspace(-x_start,x_start,n_holes-i)
                 for x in x_array:
                     self.add(cad.shapes.Disk((x,y), hole_diameter/2.,layer =layer))
                     self.n +=1
-            for i in range(1,(n_holes+1)/2):
+            for i in range(1,int((n_holes+1)/2)):
                 y = -i*pitch_vertical
                 x_start = (base_width)/2.-margin-(-y)/np.tan(np.pi/3.)
                 x_array = np.linspace(-x_start,x_start,n_holes-i)
@@ -158,7 +158,7 @@ class hex_array_of_holes(cad.core.Cell):
                     self.add(cad.shapes.Disk((x,y), hole_diameter/2.,layer =layer))
                     self.n +=1
         else:
-            for i in range((n_holes+1)/2):
+            for i in range(int((n_holes+1)/2)):
                 y = i*pitch_vertical
                 x_start = (base_width)/2.-margin*2./np.sqrt(3)-(y)/np.tan(np.pi/3.)
                 x_array = np.linspace(-x_start,x_start,n_holes-i)
@@ -170,7 +170,7 @@ class hex_array_of_holes(cad.core.Cell):
                         self.add(cad.shapes.Disk((x,y), hole_diameter/2.,layer =layer))
                         self.n +=1
                     j+=1
-            for i in range(1,(n_holes+1)/2):
+            for i in range(1,int((n_holes+1)/2)):
                 y = -i*pitch_vertical
                 x_start = (base_width)/2.-margin-(-y)/np.tan(np.pi/3.)
                 x_array = np.linspace(-x_start,x_start,n_holes-i)
@@ -1122,18 +1122,18 @@ class MeanderingInductor(MeanderingLine):
         self.bend_radius = bend_radius
         pitch = cond_spacing+cond_width
 
-        if n_legs%2==1:
-            print("Meandering inductors with odd number of legs not yet implemented")
-            return
-
         meander = []
-        for i in range(int(n_legs)/2):
-            i*=2.
-            meander.append([0,-i*pitch])
-            meander.append([length,-i*pitch])
-            meander.append([length,-i*pitch-pitch])
-            meander.append([0,-i*pitch-pitch])
+        for i in range(int(n_legs/2)):
+            meander.append([0,-2*i*pitch])
+            meander.append([length,-2*i*pitch])
+            meander.append([length,-2*i*pitch-pitch])
+            meander.append([0,-2*i*pitch-pitch])
 
+        if n_legs%2==1:
+            # Odd number of legs
+            i+=1
+            meander.append([0,-2*i*pitch])
+            meander.append([length,-2*i*pitch])
         
         super(MeanderingInductor, self).__init__(
         points = meander,
@@ -1208,6 +1208,61 @@ class MeanderAndDrum(cad.core.Cell):
             name = name+"_m4"))
         if label !=None:
             self.add(cad.shapes.Label(label, 20, [meander_to_ground/2.,30.], layer=base_layer))
+
+
+
+class MeanderAndSuspendedDrum(cad.core.Cell):
+    """docstring for MeanderAndSuspendedDrum"""
+    def __init__(self, drum,
+        meander_layer = 1,
+        n_legs = 20, 
+        cond_spacing = 10., 
+        meander_length = 300., 
+        cable_width = 1,
+        bend_radius = 1.,
+        meander_to_drum = 200.,
+        meander_to_ground = 200.,
+        label = None,
+        drumhead_radius = 10,
+        name = ""):
+        super(MeanderAndSuspendedDrum, self).__init__(name)
+
+        # add meander
+        meander = MeanderingInductor(n_legs, cable_width, cond_spacing, meander_length, bend_radius,meander_layer, name = name+"_m1")
+        drum.name=name+"_drum"
+        self.add(cad.core.CellReference(meander,origin=(meander_to_drum,0)))
+        
+        # add drum
+        self.add(cad.core.CellReference(drum,origin=(0,0)))
+        
+        # add bottom drum electrode
+        self.add(cad.shapes.Disk([0,0],drumhead_radius,layer = meander_layer))
+
+        # connect inductor to drum
+        self.add(MeanderingLine(
+            points = [[0,0],[meander_to_drum,0]],
+            turn_radius = bend_radius,
+            line_width = cable_width,
+            layer = meander_layer,
+            path = False,
+            name = name+"_m2"))
+
+        # Connect inductor to ground
+        self.vertical_length = (n_legs-1)*(cond_spacing + cable_width)
+        if n_legs%2 == 1:
+            points = [[meander_length+meander_to_drum,-self.vertical_length],[meander_length+meander_to_drum+meander_to_ground,-self.vertical_length]]
+        else:
+            points = [[0,-self.vertical_length],[meander_to_ground,-self.vertical_length]]
+        self.add(MeanderingLine(
+            points = points,
+            turn_radius = bend_radius,
+            line_width = cable_width,
+            layer = meander_layer,
+            path = False,
+            name = name+"_m3"))
+
+        if label is not None:
+            self.add(cad.shapes.Label(label, 20, [meander_to_ground,40.], layer=meander_layer))
 
 
 class interdigitated_cap(cad.core.Cell):
